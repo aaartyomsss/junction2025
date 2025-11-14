@@ -1,50 +1,132 @@
-# Welcome to your Expo app 👋
+# 🔥 Saunsei - Sauna Session Tracker
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A beautiful, intuitive mobile app for tracking and sharing your sauna sessions with real-time sensor integration.
 
-## Get started
+## 📱 Features
 
-1. Install dependencies
+### 🎯 Dashboard
+- **Live Sensor Data**: Real-time temperature and humidity monitoring from Harvia Cloud devices
+- **Device Status**: Connection status, battery level, and signal strength
+- **Session Control**: Start/stop sessions with automatic duration tracking
+- **Statistics Overview**: View your total sessions, time spent, averages, and personal records
+- **Recent Activity**: Quick access to your latest sauna session
 
+### 🗺️ Trips
+- **Session History**: Browse all your recorded sauna sessions
+- **Map View**: Visual representation of sauna locations you've visited
+- **Detailed Analytics**: 
+  - Temperature graphs showing how heat evolved during your session
+  - Average and maximum temperature tracking
+  - Humidity levels
+  - Session duration and notes
+- **Interactive Cards**: Expand sessions to see detailed temperature charts and statistics
+- **Location Tracking**: Remember where each amazing sauna experience took place
+
+### 👥 Social
+- **Community Feed**: See what other sauna enthusiasts are enjoying
+- **Session Sharing**: Share your public sessions with the community
+- **Interactive**: Like and comment on others' sessions
+- **Rich Details**: View temperatures, locations, durations, and personal notes
+- **User Profiles**: See who's having the best sauna experiences
+
+## 🌡️ Sensor Integration
+
+The app is designed to work with **Harvia Cloud Devices**, which provide:
+- Real-time temperature monitoring (in Celsius)
+- Humidity percentage tracking
+- Reliable Bluetooth/WiFi connectivity
+- Battery-powered operation
+
+### Sensor Data Structure
+```typescript
+interface SensorReading {
+  temperature: number;  // in Celsius
+  humidity: number;     // in percentage
+  timestamp: Date;
+}
+```
+
+## 🎨 Design Philosophy
+
+- **Modern UI**: Clean, card-based design with smooth animations
+- **Dark Mode**: Full support for light and dark themes
+- **Intuitive Navigation**: Three-tab structure for easy access to all features
+- **Visual Feedback**: Color-coded temperatures and haptic feedback
+- **Accessibility**: Large touch targets and clear typography
+
+## 🚀 Getting Started
+
+1. **Install dependencies**:
    ```bash
    npm install
    ```
 
-2. Start the app
-
+2. **Start the development server**:
    ```bash
-   npx expo start
+   npm start
    ```
 
-In the output, you'll find options to open the app in a
+3. **Run on your device**:
+   - iOS: Press `i` or run `npm run ios`
+   - Android: Press `a` or run `npm run android`
+   - Web: Press `w` or run `npm run web`
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 📊 Mock Data
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+The app currently uses mock data for demonstration. To integrate with real Harvia Cloud sensors:
 
-## Get a fresh project
+1. Implement the sensor API client in `services/sensorApi.ts`
+2. Replace mock data calls with real API calls
+3. Add authentication for Harvia Cloud
+4. Implement real-time data streaming
 
-When you're ready, run:
+## 🛠️ Tech Stack
 
-```bash
-npm run reset-project
+- **Framework**: React Native with Expo
+- **Navigation**: Expo Router (file-based routing)
+- **Language**: TypeScript
+- **Styling**: StyleSheet API with theme support
+- **State Management**: React Hooks
+
+## 📱 App Structure
+
+```
+saunsei/
+├── app/
+│   ├── (tabs)/
+│   │   ├── index.tsx       # Dashboard screen
+│   │   ├── trips.tsx       # Trip history & map
+│   │   └── social.tsx      # Social feed
+│   └── _layout.tsx
+├── types/
+│   └── sauna.ts           # TypeScript interfaces
+├── services/
+│   └── mockData.ts        # Mock data for demo
+├── components/
+│   └── ...                # Reusable UI components
+└── constants/
+    └── theme.ts           # Color schemes
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🎯 Future Enhancements
 
-## Learn more
+- [ ] Real Harvia Cloud API integration
+- [ ] GPS-based automatic location detection
+- [ ] Health app integration (heart rate, calories)
+- [ ] Session recommendations based on history
+- [ ] Social challenges and achievements
+- [ ] Export session data
+- [ ] Multi-device support
+- [ ] Session reminders and scheduling
 
-To learn more about developing your project with Expo, look at the following resources:
+## 🤝 Contributing
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+This app was created for Junction 2025. Feel free to fork and improve!
 
-## Join the community
+## 📄 License
 
-Join our community of developers creating universal apps.
+MIT License - feel free to use this code for your own projects.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
+
+**Made with ❤️ for sauna lovers everywhere** 🇫🇮
