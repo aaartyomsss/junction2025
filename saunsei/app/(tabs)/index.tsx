@@ -58,7 +58,7 @@ export default function DashboardScreen() {
         </View>
 
         {/* Device Status Card */}
-        <View style={[styles.card, { backgroundColor: colors.background }]}>
+        <View style={[styles.card, styles.deviceCard, { backgroundColor: colors.background }]}>
           <View style={styles.cardHeader}>
             <View style={styles.deviceInfo}>
               <View
@@ -68,19 +68,25 @@ export default function DashboardScreen() {
                 ]}
               />
               <View>
-                <ThemedText type="defaultSemiBold">{mockDeviceStatus.deviceName}</ThemedText>
-                <ThemedText style={[styles.smallText, { color: colors.icon }]}>
-                  {mockDeviceStatus.isConnected ? 'Connected' : 'Disconnected'}
+                <ThemedText type="defaultSemiBold" style={styles.deviceName}>
+                  {mockDeviceStatus.deviceName}
                 </ThemedText>
+                <View style={styles.statusBadge}>
+                  <ThemedText style={styles.statusText}>
+                    {mockDeviceStatus.isConnected ? '✓ Connected' : '✗ Disconnected'}
+                  </ThemedText>
+                </View>
               </View>
             </View>
             <View style={styles.deviceStats}>
-              <Text style={[styles.smallText, { color: colors.icon }]}>
-                🔋 {mockDeviceStatus.batteryLevel}%
-              </Text>
-              <Text style={[styles.smallText, { color: colors.icon }]}>
-                📶 {mockDeviceStatus.signalStrength}%
-              </Text>
+              <View style={styles.statPill}>
+                <Text style={styles.statEmoji}>🔋</Text>
+                <ThemedText style={styles.statPillText}>{mockDeviceStatus.batteryLevel}%</ThemedText>
+              </View>
+              <View style={styles.statPill}>
+                <Text style={styles.statEmoji}>📶</Text>
+                <ThemedText style={styles.statPillText}>{mockDeviceStatus.signalStrength}%</ThemedText>
+              </View>
             </View>
           </View>
         </View>
@@ -91,21 +97,21 @@ export default function DashboardScreen() {
             Live Sensor Data
           </ThemedText>
           <View style={styles.sensorGrid}>
-            <View style={[styles.sensorCard, { backgroundColor: '#FF6B6B20' }]}>
+            <View style={[styles.sensorCard, styles.temperatureCard]}>
               <Text style={styles.sensorIcon}>🌡️</Text>
               <ThemedText type="title" style={styles.sensorValue}>
                 {liveData.temperature.toFixed(1)}°C
               </ThemedText>
-              <ThemedText style={[styles.smallText, { color: colors.icon }]}>
+              <ThemedText style={styles.sensorLabel}>
                 Temperature
               </ThemedText>
             </View>
-            <View style={[styles.sensorCard, { backgroundColor: '#4ECDC420' }]}>
+            <View style={[styles.sensorCard, styles.humidityCard]}>
               <Text style={styles.sensorIcon}>💧</Text>
               <ThemedText type="title" style={styles.sensorValue}>
                 {liveData.humidity.toFixed(1)}%
               </ThemedText>
-              <ThemedText style={[styles.smallText, { color: colors.icon }]}>
+              <ThemedText style={styles.sensorLabel}>
                 Humidity
               </ThemedText>
             </View>
@@ -115,9 +121,7 @@ export default function DashboardScreen() {
           <TouchableOpacity
             style={[
               styles.sessionButton,
-              {
-                backgroundColor: isSessionActive ? '#f44336' : colors.tint,
-              },
+              isSessionActive ? styles.stopButton : styles.startButton,
             ]}
             onPress={() => {
               setIsSessionActive(!isSessionActive);
@@ -125,9 +129,10 @@ export default function DashboardScreen() {
                 setSessionDuration(0);
               }
             }}>
-            <ThemedText type="defaultSemiBold" style={styles.buttonText}>
+            <Text style={styles.buttonIcon}>{isSessionActive ? '⏹' : '▶️'}</Text>
+            <Text style={styles.buttonText}>
               {isSessionActive ? `Stop Session (${formatDuration(sessionDuration)})` : 'Start Session'}
-            </ThemedText>
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -232,10 +237,12 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -251,14 +258,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  deviceCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  deviceName: {
+    fontSize: 16,
+  },
   statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  statusBadge: {
+    marginTop: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '600',
   },
   deviceStats: {
     alignItems: 'flex-end',
+    gap: 6,
+  },
+  statPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
+    backgroundColor: 'rgba(78, 205, 196, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(78, 205, 196, 0.3)',
+  },
+  statEmoji: {
+    fontSize: 12,
+  },
+  statPillText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   sensorGrid: {
     flexDirection: 'row',
@@ -267,55 +309,113 @@ const styles = StyleSheet.create({
   },
   sensorCard: {
     flex: 1,
-    padding: 20,
-    borderRadius: 12,
+    padding: 24,
+    borderRadius: 16,
     alignItems: 'center',
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  temperatureCard: {
+    backgroundColor: '#FF6B6B',
+    borderColor: '#FF8787',
+  },
+  humidityCard: {
+    backgroundColor: '#4ECDC4',
+    borderColor: '#6EE7E0',
   },
   sensorIcon: {
-    fontSize: 32,
-    marginBottom: 8,
+    fontSize: 40,
+    marginBottom: 12,
   },
   sensorValue: {
-    marginBottom: 4,
+    marginBottom: 6,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  sensorLabel: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    fontWeight: '600',
   },
   sessionButton: {
-    padding: 16,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 16,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  startButton: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#66BB6A',
+  },
+  stopButton: {
+    backgroundColor: '#f44336',
+    borderColor: '#FF6B6B',
+  },
+  buttonIcon: {
+    fontSize: 20,
+    color: '#FFFFFF',
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 12,
   },
   statItem: {
     flex: 1,
     minWidth: '45%',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
+    backgroundColor: 'rgba(78, 205, 196, 0.08)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(78, 205, 196, 0.2)',
   },
   statValue: {
-    marginBottom: 4,
+    marginBottom: 6,
   },
   smallText: {
     fontSize: 12,
     textAlign: 'center',
+    fontWeight: '500',
   },
   recentSession: {
     gap: 12,
+    padding: 16,
+    backgroundColor: 'rgba(255, 107, 107, 0.08)',
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B6B',
   },
   sessionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 4,
   },
   sessionNotes: {
     fontStyle: 'italic',
     fontSize: 14,
     marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 107, 107, 0.2)',
   },
 });
