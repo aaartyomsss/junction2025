@@ -45,6 +45,13 @@ export interface DeviceStatus {
   deviceName: string;
   batteryLevel?: number;
   signalStrength?: number;
+  deviceType?: string;
+  location?: {
+    name: string;
+    latitude: number;
+    longitude: number;
+  };
+  lastSeen?: Date;
 }
 
 // Statistics
