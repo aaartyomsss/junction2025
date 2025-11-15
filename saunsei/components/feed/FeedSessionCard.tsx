@@ -118,9 +118,7 @@ export function FeedSessionCard({
 
         <TouchableOpacity style={styles.actionButton} onPress={onComment}>
           <ThemedText style={styles.actionIcon}>💬</ThemedText>
-          <ThemedText style={styles.actionText}>
-            {comments} comments
-          </ThemedText>
+          <ThemedText style={styles.actionText}>{comments} comments</ThemedText>
         </TouchableOpacity>
       </View>
     </View>

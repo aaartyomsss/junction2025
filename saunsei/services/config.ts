@@ -1,7 +1,7 @@
 /**
  * API Configuration
  *
- * Update BACKEND_HOST based on your environment:
+ * Set EXPO_PUBLIC_BACKEND_HOST environment variable:
  * - For iOS Simulator: "localhost" or "127.0.0.1"
  * - For Android Emulator: "10.0.2.2" (special alias for host machine)
  * - For Physical Device: Your computer's local IP (e.g., "192.168.1.100")
@@ -10,11 +10,9 @@
  * To find your IP on Mac/Linux: Run `ifconfig` or `ip addr`
  */
 
-// Change this to your computer's IP address if testing on a physical device
-// For Android Emulator, use "10.0.2.2"
-// For iOS Simulator or web, use "localhost"
-const BACKEND_HOST = "172.20.10.3"
-const BACKEND_PORT = "8080"
+// Defaults to localhost if environment variable is not set
+const BACKEND_HOST = process.env.EXPO_PUBLIC_BACKEND_HOST || "localhost"
+const BACKEND_PORT = process.env.EXPO_PUBLIC_BACKEND_PORT || "8080"
 
 export const API_CONFIG = {
   BACKEND_BASE_URL: `http://${BACKEND_HOST}:${BACKEND_PORT}`,

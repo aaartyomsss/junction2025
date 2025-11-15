@@ -36,14 +36,12 @@ export default function SocialScreen() {
 
         {/* Upcoming Sessions Section */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>
-            Upcoming Sessions
-          </ThemedText>
+          <ThemedText style={styles.sectionTitle}>Upcoming Sessions</ThemedText>
 
           <View style={styles.sessionsContainer}>
             <UpcomingSessionCard
               hostName="Artjom is hosting"
-              saunaName="Artjom&apos;s Home Sauna"
+              saunaName="Artjom's Home Sauna"
               dateTime="Tomorrow at 6:00 PM"
               attending={3}
               status="going"
@@ -51,7 +49,7 @@ export default function SocialScreen() {
 
             <UpcomingSessionCard
               hostName="You are hosting"
-              saunaName="Seppo&apos;s Home Sauna"
+              saunaName="Seppo's Home Sauna"
               dateTime="Nov 18, 10:00 AM"
               attending={2}
               status="host"
@@ -81,7 +79,7 @@ export default function SocialScreen() {
           <FeedSessionCard
             userName="Alexander Tamm"
             dateTime="2025-11-14 at 16:15"
-            saunaName="Alex&apos;s Home Sauna"
+            saunaName="Alex's Home Sauna"
             duration={60}
             currentTemp={88}
             avgTemp={83}
@@ -199,4 +197,3 @@ const styles = StyleSheet.create({
     height: 24,
   },
 })
-
