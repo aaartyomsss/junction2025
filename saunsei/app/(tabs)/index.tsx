@@ -2,13 +2,13 @@ import React from "react"
 import { ScrollView, StyleSheet, View } from "react-native"
 import { ThemedText } from "@/components/themed-text"
 import { ThemedView } from "@/components/themed-view"
-import { AppHeader } from "@/components/AppHeader"
-import { ProfileCard } from "@/components/ProfileCard"
-import { GradientButton } from "@/components/GradientButton"
-import { SaunaTamagotchi } from "@/components/SaunaTamagotchi"
-import { StatCard } from "@/components/StatCard"
-import { SessionCard } from "@/components/SessionCard"
-import { BottomNavigation } from "@/components/BottomNavigation"
+import { AppHeader } from "@/components/common/AppHeader"
+import { ProfileCard } from "@/components/common/ProfileCard"
+import { GradientButton } from "@/components/common/GradientButton"
+import { SaunaTamagotchi } from "@/components/common/SaunaTamagotchi"
+import { StatCard } from "@/components/common/StatCard"
+import { SessionCard } from "@/components/common/SessionCard"
+import { BottomNavigation } from "@/components/common/BottomNavigation"
 
 export default function DashboardScreen() {
   return (
@@ -133,8 +133,6 @@ export default function DashboardScreen() {
 
         <View style={{ height: 80 }} />
       </ScrollView>
-
-      <BottomNavigation />
     </ThemedView>
   )
 }
