@@ -1,0 +1,6 @@
+from .knn import router as knn_router
+from .svm import router as svm_router
+from .decision_tree import router as decision_tree_router
+from .random_forest import router as random_forest_router
+
+__all__ = ["knn_router", "svm_router", "decision_tree_router", "random_forest_router"]
