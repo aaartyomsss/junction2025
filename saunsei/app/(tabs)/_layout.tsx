@@ -49,6 +49,12 @@ export default function TabLayout() {
           title: "Harvia",
         }}
       />
+      <Tabs.Screen
+        name="leaderboard"
+        options={{
+          title: "Leaderboard",
+        }}
+      />
     </Tabs>
   )
 }

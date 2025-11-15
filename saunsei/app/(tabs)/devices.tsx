@@ -18,6 +18,15 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { backendApi, HarviaAuthResponse } from '@/services/backendApi';
 import { DeviceStatus } from '@/types/sauna';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
+
+// Helper function to generate placeholder device image URL
+const getDeviceImageUrl = (deviceName: string, width: number = 200, height: number = 200) => {
+  const seed = deviceName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return `https://picsum.photos/seed/device${seed}/${width}/${height}`;
+}
 
 // Simple token storage (in production, use expo-secure-store)
 const TOKEN_KEY = 'harvia_token';
@@ -71,7 +80,7 @@ interface DeviceCardProps {
 
 const DeviceCard: React.FC<DeviceCardProps> = ({ device, colors, isExpanded, onPress, index }) => {
   const getDeviceIcon = (type: string) => {
-    return type === 'fenix' ? '🎛️' : '📡';
+    return type === 'fenix' ? 'tune' : 'router';
   };
 
   const getStatusColor = (isConnected: boolean) => {
@@ -88,22 +97,34 @@ const DeviceCard: React.FC<DeviceCardProps> = ({ device, colors, isExpanded, onP
       }]}
       onPress={onPress}
       activeOpacity={0.7}>
+      {/* Device Image */}
+      <View style={styles.deviceImageContainer}>
+        <Image
+          source={{ uri: getDeviceImageUrl(device.deviceName) }}
+          style={styles.deviceImage}
+          placeholder={{ blurhash: "LKO2?U%2Tw=w]~RBVZRi};RPxuwH" }}
+          contentFit="cover"
+        />
+      </View>
+
       {/* Device Header */}
       <View style={styles.deviceHeader}>
         <View style={styles.deviceMainInfo}>
           <View style={[styles.deviceIconWrapper, { 
             backgroundColor: statusColor + '15' 
           }]}>
-            <Text style={styles.deviceIcon}>
-              {getDeviceIcon(device.deviceType || 'smart_sensor')}
-            </Text>
+            <MaterialIcons 
+              name={getDeviceIcon(device.deviceType || 'smart_sensor') as any} 
+              size={26} 
+              color={statusColor} 
+            />
           </View>
           <View style={styles.deviceTextInfo}>
             <ThemedText type="defaultSemiBold" style={[styles.deviceName, { color: colors.text }]}>
               {device.deviceName}
             </ThemedText>
             <View style={styles.deviceLocationRow}>
-              <Text style={styles.locationIcon}>📍</Text>
+              <MaterialIcons name="location-on" size={14} color={colors.textTertiary} />
               <ThemedText style={[styles.deviceLocation, { color: colors.textTertiary }]}>
                 {device.location?.name || 'Unknown Location'}
               </ThemedText>
@@ -120,34 +141,35 @@ const DeviceCard: React.FC<DeviceCardProps> = ({ device, colors, isExpanded, onP
 
       {/* Device Metrics */}
       <View style={styles.deviceMetrics}>
-        <View style={[styles.metricItem, { backgroundColor: statusColor + '10' }]}>
-          <Text style={styles.metricIcon}>⚡</Text>
-          <View style={styles.metricContent}>
-            <ThemedText style={[styles.metricValue, { color: colors.text }]}>
+        <View style={styles.metricRow}>
+          <View style={styles.metricItemSimple}>
+            <MaterialIcons name="power" size={16} color={statusColor} />
+            <ThemedText style={[styles.metricValueSimple, { color: colors.text }]}>
               {device.isConnected ? 'Active' : 'Inactive'}
             </ThemedText>
-            <ThemedText style={[styles.metricLabel, { color: colors.textTertiary }]}>
-              Status
-            </ThemedText>
           </View>
-        </View>
-        
-        <View style={[styles.metricItem, { backgroundColor: colors.border + '40' }]}>
-          <Text style={styles.metricIcon}>🔧</Text>
-          <View style={styles.metricContent}>
-            <ThemedText style={[styles.metricValue, { color: colors.text }]}>
-              {device.deviceType || 'N/A'}
-            </ThemedText>
-            <ThemedText style={[styles.metricLabel, { color: colors.textTertiary }]}>
-              Type
-            </ThemedText>
-          </View>
-        </View>
-        
-        <View style={[styles.metricItem, { backgroundColor: colors.border + '40' }]}>
-          <Text style={styles.metricIcon}>🕐</Text>
-          <View style={styles.metricContent}>
-            <ThemedText style={[styles.metricValue, { color: colors.text }]}>
+          
+          {device.batteryLevel !== undefined && device.batteryLevel > 0 && (
+            <View style={styles.metricItemSimple}>
+              <MaterialIcons name="battery-full" size={16} color={colors.textTertiary} />
+              <ThemedText style={[styles.metricValueSimple, { color: colors.text }]}>
+                {Math.round(device.batteryLevel)}%
+              </ThemedText>
+            </View>
+          )}
+          
+          {device.signalStrength !== undefined && device.signalStrength > 0 && (
+            <View style={styles.metricItemSimple}>
+              <MaterialIcons name="signal-cellular-alt" size={16} color={colors.textTertiary} />
+              <ThemedText style={[styles.metricValueSimple, { color: colors.text }]}>
+                {Math.round(device.signalStrength)}%
+              </ThemedText>
+            </View>
+          )}
+          
+          <View style={styles.metricItemSimple}>
+            <MaterialIcons name="schedule" size={16} color={colors.textTertiary} />
+            <ThemedText style={[styles.metricValueSimple, { color: colors.text }]}>
               {device.isConnected 
                 ? 'Now'
                 : device.lastSeen 
@@ -167,9 +189,6 @@ const DeviceCard: React.FC<DeviceCardProps> = ({ device, colors, isExpanded, onP
                     })()
                   : 'Unknown'}
             </ThemedText>
-            <ThemedText style={[styles.metricLabel, { color: colors.textTertiary }]}>
-              Last Seen
-            </ThemedText>
           </View>
         </View>
       </View>
@@ -178,6 +197,9 @@ const DeviceCard: React.FC<DeviceCardProps> = ({ device, colors, isExpanded, onP
       {isExpanded && (
         <View style={styles.expandedDetails}>
           <View style={[styles.detailDivider, { backgroundColor: colors.border }]} />
+          <ThemedText type="defaultSemiBold" style={[styles.detailSectionTitle, { color: colors.text }]}>
+            Device Details
+          </ThemedText>
           <View style={styles.detailGrid}>
             <View style={styles.detailItem}>
               <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
@@ -188,7 +210,7 @@ const DeviceCard: React.FC<DeviceCardProps> = ({ device, colors, isExpanded, onP
                 style={[styles.detailValue, { color: colors.text }]}
                 numberOfLines={1}
                 ellipsizeMode="middle">
-                {device.deviceId}
+                {device.deviceId || 'Unknown'}
               </ThemedText>
             </View>
             <View style={styles.detailItem}>
@@ -196,7 +218,7 @@ const DeviceCard: React.FC<DeviceCardProps> = ({ device, colors, isExpanded, onP
                 Device Name
               </ThemedText>
               <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
-                {device.deviceName}
+                {device.deviceName || 'Unknown'}
               </ThemedText>
             </View>
             <View style={styles.detailItem}>
@@ -207,26 +229,102 @@ const DeviceCard: React.FC<DeviceCardProps> = ({ device, colors, isExpanded, onP
                 {device.deviceType || 'Unknown'}
               </ThemedText>
             </View>
-            {device.location && device.location.latitude && device.location.longitude && (
-              <>
-                <View style={styles.detailItem}>
-                  <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
-                    Latitude
-                  </ThemedText>
-                  <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
-                    {device.location.latitude.toFixed(4)}
-                  </ThemedText>
-                </View>
-                <View style={styles.detailItem}>
-                  <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
-                    Longitude
-                  </ThemedText>
-                  <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
-                    {device.location.longitude.toFixed(4)}
-                  </ThemedText>
-                </View>
-              </>
-            )}
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Brand
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.brand || 'Unknown'}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Serial Number
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.serialNumber || 'Unknown'}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Battery Level
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.batteryLevel !== undefined && device.batteryLevel > 0 
+                  ? `${Math.round(device.batteryLevel)}%` 
+                  : 'N/A'}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Signal Strength
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.signalStrength !== undefined && device.signalStrength > 0 
+                  ? `${Math.round(device.signalStrength)}%` 
+                  : 'N/A'}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Location
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.location?.name || device.city || 'Unknown'}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                City
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.city || 'Unknown'}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Country
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.country || 'Unknown'}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Coordinates
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.location && device.location.latitude && device.location.longitude
+                  ? `${device.location.latitude.toFixed(4)}, ${device.location.longitude.toFixed(4)}`
+                  : 'N/A'}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Hardware
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.espChip || 'Unknown'}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Firmware
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.firmwareVersion || 'Unknown'}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Last Seen
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.lastSeen 
+                  ? new Date(device.lastSeen).toLocaleString()
+                  : 'Unknown'}
+              </ThemedText>
+            </View>
           </View>
         </View>
       )}
@@ -384,7 +482,7 @@ export default function DevicesScreen() {
     return (
       <ThemedView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorIcon}>⚠️</Text>
+          <MaterialIcons name="warning" size={64} color="#f44336" />
           <ThemedText type="title" style={styles.errorTitle}>Backend Offline</ThemedText>
           <ThemedText style={[styles.errorText, { color: colors.textTertiary }]}>
             Unable to connect to the backend API
@@ -470,7 +568,7 @@ export default function DevicesScreen() {
                 onPress={() => setShowLoginModal(true)}
                 activeOpacity={0.7}>
                 <View style={styles.harviaConnectContent}>
-                  <Text style={styles.harviaIcon}>🔗</Text>
+                  <MaterialIcons name="link" size={24} color={colors.tint} />
                   <View style={styles.harviaConnectText}>
                     <ThemedText style={[styles.harviaConnectTitle, { color: colors.text }]}>
                       Connect to Harvia
@@ -479,7 +577,7 @@ export default function DevicesScreen() {
                       Access your real devices
                     </ThemedText>
                   </View>
-                  <Text style={styles.chevron}>›</Text>
+                  <MaterialIcons name="chevron-right" size={24} color={colors.tint} />
                 </View>
               </TouchableOpacity>
             )}
@@ -491,7 +589,7 @@ export default function DevicesScreen() {
           <View style={styles.statsContainer}>
             <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[styles.statIconWrapper, { backgroundColor: '#66BB6A15' }]}>
-                <Text style={styles.statEmoji}>✓</Text>
+                <MaterialIcons name="check-circle" size={22} color="#4CAF50" />
               </View>
               <ThemedText type="title" style={[styles.statNumber, { color: colors.text }]}>
                 {connectedDevices}
@@ -503,7 +601,7 @@ export default function DevicesScreen() {
             
             <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[styles.statIconWrapper, { backgroundColor: '#f4433615' }]}>
-                <Text style={styles.statEmoji}>○</Text>
+                <MaterialIcons name="radio-button-unchecked" size={22} color="#f44336" />
               </View>
               <ThemedText type="title" style={[styles.statNumber, { color: colors.text }]}>
                 {offlineDevices}
@@ -515,7 +613,7 @@ export default function DevicesScreen() {
 
             <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[styles.statIconWrapper, { backgroundColor: '#4ECDC415' }]}>
-                <Text style={styles.statEmoji}>🔧</Text>
+                <MaterialIcons name="build" size={22} color="#4ECDC4" />
               </View>
               <ThemedText type="title" style={[styles.statNumber, { color: colors.text }]}>
                 {totalTypes}
@@ -543,7 +641,7 @@ export default function DevicesScreen() {
           {devices.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconContainer}>
-                <Text style={styles.emptyIcon}>📡</Text>
+                <MaterialIcons name="router" size={40} color={colors.textTertiary} />
               </View>
               <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
                 No devices found
@@ -608,7 +706,7 @@ export default function DevicesScreen() {
                 <TouchableOpacity 
                   onPress={() => setShowLoginModal(false)}
                   style={styles.modalCloseButton}>
-                  <Text style={[styles.modalClose, { color: colors.textTertiary }]}>✕</Text>
+                  <MaterialIcons name="close" size={24} color={colors.textTertiary} />
                 </TouchableOpacity>
               </View>
 
@@ -695,10 +793,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 40,
   },
-  errorIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
   errorTitle: {
     marginBottom: 8,
   },
@@ -778,9 +872,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  harviaIcon: {
-    fontSize: 24,
-  },
   harviaConnectText: {
     flex: 1,
   },
@@ -791,10 +882,6 @@ const styles = StyleSheet.create({
   },
   harviaConnectSubtitle: {
     fontSize: 13,
-  },
-  chevron: {
-    fontSize: 24,
-    color: '#C9B59C',
   },
   harviaConnectedCard: {
     borderRadius: 16,
@@ -873,9 +960,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  statEmoji: {
-    fontSize: 22,
-  },
   statNumber: {
     fontSize: 26,
     fontWeight: '700',
@@ -921,9 +1005,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  emptyIcon: {
-    fontSize: 40,
-  },
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
@@ -947,21 +1028,32 @@ const styles = StyleSheet.create({
   },
   // Device Card
   deviceCard: {
-    padding: 20,
     borderRadius: 16,
     marginBottom: 14,
     borderWidth: 1,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
+  deviceImageContainer: {
+    width: '100%',
+    height: 160,
+    overflow: 'hidden',
+  },
+  deviceImage: {
+    width: '100%',
+    height: '100%',
+  },
   deviceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    padding: 20,
+    paddingTop: 16,
+    marginBottom: 0,
   },
   deviceMainInfo: {
     flexDirection: 'row',
@@ -976,9 +1068,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  deviceIcon: {
-    fontSize: 26,
-  },
   deviceTextInfo: {
     flex: 1,
   },
@@ -992,9 +1081,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-  },
-  locationIcon: {
-    fontSize: 12,
   },
   deviceLocation: {
     fontSize: 13,
@@ -1014,30 +1100,23 @@ const styles = StyleSheet.create({
   },
   // Device Metrics
   deviceMetrics: {
-    flexDirection: 'row',
-    gap: 10,
+    marginTop: 4,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
-  metricItem: {
-    flex: 1,
+  metricRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    alignItems: 'center',
+  },
+  metricItemSimple: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 12,
+    gap: 6,
   },
-  metricIcon: {
-    fontSize: 18,
-  },
-  metricContent: {
-    flex: 1,
-  },
-  metricValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  metricLabel: {
-    fontSize: 11,
+  metricValueSimple: {
+    fontSize: 13,
     fontWeight: '500',
   },
   // Expanded Details
@@ -1047,7 +1126,13 @@ const styles = StyleSheet.create({
   },
   detailDivider: {
     height: 1,
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  detailSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#3A2F23',
   },
   detailGrid: {
     gap: 12,
@@ -1110,10 +1195,6 @@ const styles = StyleSheet.create({
     height: 32,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  modalClose: {
-    fontSize: 24,
-    fontWeight: '300',
   },
   modalBody: {
     gap: 20,

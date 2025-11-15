@@ -1,6 +1,31 @@
 import React from "react"
 import { View, StyleSheet, TouchableOpacity } from "react-native"
+import { Image } from "expo-image"
 import { ThemedText } from "@/components/themed-text"
+
+// Local sauna images
+const saunaImages = [
+  require('@/pics/saunas/saun1.jpg'),
+  require('@/pics/saunas/saun2.jpg'),
+  require('@/pics/saunas/saun3.jpg'),
+  require('@/pics/saunas/saun4.jpg'),
+  require('@/pics/saunas/saun5.jpg'),
+]
+
+// Helper function to get a consistent sauna image based on name
+// Uses a better hash function for more even distribution
+const getSaunaImage = (name: string) => {
+  // Create a better hash using prime number multiplication
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    const char = name.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32-bit integer
+  }
+  // Use absolute value and modulo to get index 0-4
+  const index = Math.abs(hash) % saunaImages.length
+  return saunaImages[index]
+}
 
 interface SaunaAttribute {
   icon: string
@@ -21,6 +46,7 @@ interface SaunaCardProps {
   attributes?: SaunaAttribute[]
   onPress?: () => void
   highlighted?: boolean
+  imageIndex?: number // Optional index for round-robin image distribution
 }
 
 export function SaunaCard({
@@ -36,6 +62,7 @@ export function SaunaCard({
   attributes = [],
   onPress,
   highlighted = false,
+  imageIndex,
 }: SaunaCardProps) {
   const renderRatingDots = (count: number, max: number = 5) => {
     return (
@@ -59,14 +86,25 @@ export function SaunaCard({
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.titleSection}>
-          <ThemedText type="subtitle" style={styles.name}>
-            {name}
-          </ThemedText>
-          {isOwned && <ThemedText style={styles.verifiedIcon}>✓</ThemedText>}
-        </View>
+      {/* Sauna Image */}
+      <View style={styles.imageContainer}>
+        <Image
+          source={imageIndex !== undefined ? saunaImages[imageIndex % saunaImages.length] : getSaunaImage(name)}
+          style={styles.saunaImage}
+          placeholder={{ blurhash: "LKO2?U%2Tw=w]~RBVZRi};RPxuwH" }}
+          contentFit="cover"
+        />
+      </View>
+
+      <View style={styles.content}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.titleSection}>
+            <ThemedText type="subtitle" style={styles.name}>
+              {name}
+            </ThemedText>
+            {isOwned && <ThemedText style={styles.verifiedIcon}>✓</ThemedText>}
+          </View>
 
         {rating && (
           <View style={styles.ratingBadge}>
@@ -120,12 +158,13 @@ export function SaunaCard({
         )}
       </View>
 
-      {/* Last visit */}
-      {lastVisit && (
-        <ThemedText style={styles.lastVisit}>
-          Last visit: {lastVisit}
-        </ThemedText>
-      )}
+        {/* Last visit */}
+        {lastVisit && (
+          <ThemedText style={styles.lastVisit}>
+            Last visit: {lastVisit}
+          </ThemedText>
+        )}
+      </View>
     </TouchableOpacity>
   )
 }
@@ -136,7 +175,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#D9CFC7",
-    padding: 17,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -144,8 +183,20 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginBottom: 12,
   },
+  imageContainer: {
+    width: "100%",
+    height: 180,
+    overflow: "hidden",
+  },
+  saunaImage: {
+    width: "100%",
+    height: "100%",
+  },
   cardHighlighted: {
     backgroundColor: "#EFE9E3",
+  },
+  content: {
+    padding: 17,
   },
   header: {
     flexDirection: "row",

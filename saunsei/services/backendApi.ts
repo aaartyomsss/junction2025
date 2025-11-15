@@ -260,22 +260,74 @@ class BackendApiService {
       }
 
       // Map Harvia devices to DeviceStatus format
-      return result.devices.map((device: any) => ({
-        isConnected: device.isConnected ?? false,
-        deviceId: device.id || device.name,
-        deviceName: device.displayName || device.name, // Use displayName if available, fallback to device ID
-        batteryLevel: device.batteryLevel ?? 0,
-        signalStrength: device.signalStrength ?? 0,
-        deviceType: device.type || "unknown",
-        location: device.location
-          ? {
-              name: device.location.name || "Unknown",
-              latitude: device.location.latitude ?? 0,
-              longitude: device.location.longitude ?? 0,
+      return result.devices.map((device: any) => {
+        // Extract display name from attr array if not already set
+        let displayName = device.displayName;
+        
+        if (!displayName && device.attr && Array.isArray(device.attr)) {
+          // Look for name in attr array
+          const attrs = device.attr.reduce((acc: any, item: any) => {
+            if (item.key && item.value) {
+              acc[item.key] = item.value;
             }
-          : undefined,
-        lastSeen: device.lastSeen ? new Date(device.lastSeen) : undefined,
-      }))
+            return acc;
+          }, {});
+          
+          // Try to find a display name, avoiding serial numbers/device IDs
+          const nameFields = ["name", "displayName", "alias", "deviceName"];
+          for (const field of nameFields) {
+            if (attrs[field]) {
+              const value = attrs[field];
+              // Skip if it looks like a serial number or device ID
+              if (!(value.length > 20 && (value.includes('-') || value.includes('_')))) {
+                displayName = value;
+                break;
+              }
+            }
+          }
+          
+          // Fallback: use first non-technical attribute as display name
+          if (!displayName) {
+            const excludeKeys = ["deviceId", "serialNumber", "serial", "id", "type", "connected", "lastSeen"];
+            for (const [key, value] of Object.entries(attrs)) {
+              if (!excludeKeys.includes(key.toLowerCase()) && typeof value === 'string' && value.length < 50) {
+                displayName = value;
+                break;
+              }
+            }
+          }
+        }
+        
+        // Final fallback to device ID/name, but prefer a shorter version
+        const deviceId = device.id || device.name;
+        if (!displayName) {
+          displayName = deviceId;
+        }
+        
+        return {
+          isConnected: device.isConnected ?? false,
+          deviceId: deviceId,
+          deviceName: displayName, // Use extracted displayName
+          batteryLevel: device.batteryLevel !== undefined && device.batteryLevel > 0 ? device.batteryLevel : undefined,
+          signalStrength: device.signalStrength !== undefined && device.signalStrength > 0 ? device.signalStrength : undefined,
+          deviceType: device.type || "unknown",
+          location: device.location
+            ? {
+                name: device.location.name || "Unknown",
+                latitude: device.location.latitude ?? 0,
+                longitude: device.location.longitude ?? 0,
+              }
+            : undefined,
+          lastSeen: device.lastSeen ? new Date(device.lastSeen) : undefined,
+          // Additional metadata
+          brand: device.brand,
+          serialNumber: device.serialNumber,
+          city: device.city,
+          country: device.country,
+          espChip: device.espChip,
+          firmwareVersion: device.firmwareVersion,
+        };
+      })
     } catch (error) {
       console.error("Failed to fetch Harvia devices:", error)
       return []

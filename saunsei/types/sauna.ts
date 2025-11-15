@@ -52,6 +52,13 @@ export interface DeviceStatus {
     longitude: number;
   };
   lastSeen?: Date;
+  // Additional metadata
+  brand?: string;
+  serialNumber?: string;
+  city?: string;
+  country?: string;
+  espChip?: string;
+  firmwareVersion?: string;
 }
 
 // Statistics

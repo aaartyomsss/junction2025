@@ -154,7 +154,8 @@ class HarviaAPIService:
         """
         Get list of user's devices from Harvia API.
         
-        Uses REST API GET /devices endpoint (GraphQL returns 401 for hackathon account).
+        Tries GraphQL first (usersDevicesList) for better data including display names,
+        falls back to REST API if GraphQL fails.
         
         Args:
             id_token: JWT token from authentication (idToken or accessToken)
@@ -167,8 +168,209 @@ class HarviaAPIService:
         """
         config = await self._get_api_configuration()
         
-        # Use REST API directly - GraphQL requires special permissions that hackathon account doesn't have
-        return await self._get_devices_rest(id_token, config)
+        # Try GraphQL first - usersDevicesList should work and has better data
+        try:
+            print("🔍 DEBUG: Attempting GraphQL usersDevicesList query first...")
+            return await self._get_devices_graphql_users(id_token, config)
+        except HarviaAPIError as e:
+            print(f"⚠️ DEBUG: GraphQL failed: {e.message}, falling back to REST API...")
+            # Fall back to REST API if GraphQL fails
+            return await self._get_devices_rest(id_token, config)
+    
+    async def _get_devices_graphql_users(self, id_token: str, config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get devices using GraphQL: 
+        1. First get list using usersDevicesList
+        2. Then query each device individually with devicesGet to get full details including display name
+        """
+        
+        device_graphql_endpoint = config.get("GraphQL", {}).get("device", {}).get("https")
+        
+        if not device_graphql_endpoint:
+            raise HarviaAPIError("GraphQL device endpoint not found in configuration")
+        
+        print(f"🌐 DEBUG: Using GraphQL device endpoint: {device_graphql_endpoint}")
+        
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {id_token}",
+                "Accept": "application/json",
+            }
+            
+            # Step 1: Get list of devices using usersDevicesList
+            list_query = """
+            query ListMyDevices {
+              usersDevicesList {
+                devices {
+                  id
+                  type
+                  attr {
+                    key
+                    value
+                  }
+                  roles
+                  via
+                }
+                nextToken
+              }
+            }
+            """
+            
+            print(f"🔑 DEBUG: Step 1 - Sending usersDevicesList query...")
+            list_response = await client.post(
+                device_graphql_endpoint,
+                headers=headers,
+                json={"query": list_query}
+            )
+            
+            print(f"📡 DEBUG: GraphQL list response status: {list_response.status_code}")
+            
+            if list_response.status_code == 401:
+                error_text = list_response.text
+                print(f"❌ DEBUG: GraphQL 401: {error_text[:500]}")
+                raise HarviaAPIError(f"GraphQL Unauthorized (401) - Token may not have GraphQL access", 401)
+            elif list_response.status_code != 200:
+                error_text = list_response.text
+                print(f"❌ DEBUG: GraphQL error response: {error_text[:1000]}")
+                raise HarviaAPIError(f"GraphQL request failed: {list_response.status_code}", list_response.status_code)
+            
+            list_result = list_response.json()
+            
+            # Extract device IDs from list
+            if "data" in list_result and "usersDevicesList" in list_result["data"]:
+                device_list = list_result["data"]["usersDevicesList"].get("devices", [])
+                print(f"✅ DEBUG: Found {len(device_list)} devices in list")
+            elif "errors" in list_result:
+                error_msg = list_result["errors"][0].get("message", "Unknown GraphQL error")
+                print(f"❌ DEBUG: GraphQL errors: {list_result['errors']}")
+                raise HarviaAPIError(f"GraphQL error: {error_msg}")
+            else:
+                print(f"⚠️ DEBUG: Unexpected GraphQL response structure: {list_result}")
+                raise HarviaAPIError("Unexpected GraphQL response structure")
+            
+            # Step 2: Query each device individually to get full details including display name
+            # Also try to get device aliases/preferences from users service if available
+            users_graphql_endpoint = config.get("GraphQL", {}).get("users", {}).get("https")
+            enriched_devices = []
+            
+            for device_summary in device_list:
+                device_id = device_summary.get("id")
+                if not device_id:
+                    print(f"⚠️ DEBUG: Skipping device without ID: {device_summary}")
+                    continue
+                
+                print(f"🔍 DEBUG: Step 2 - Fetching full details for device: {device_id}")
+                
+                # Query individual device for full details
+                device_query = f"""
+                query GetDevice {{
+                  devicesGet(deviceId: "{device_id}") {{
+                    id
+                    type
+                    attr {{
+                      key
+                      value
+                    }}
+                    roles
+                    via
+                  }}
+                }}
+                """
+                
+                device_response = await client.post(
+                    device_graphql_endpoint,
+                    headers=headers,
+                    json={"query": device_query}
+                )
+                
+                device_data = None
+                if device_response.status_code == 200:
+                    device_result = device_response.json()
+                    if "data" in device_result and "devicesGet" in device_result["data"]:
+                        device_data = device_result["data"]["devicesGet"]
+                        if device_data:  # devicesGet can return None if unauthorized
+                            print(f"✅ DEBUG: Enriched device {device_id} with full details")
+                        else:
+                            print(f"⚠️ DEBUG: devicesGet returned None for {device_id} (may be unauthorized)")
+                            device_data = device_summary
+                    else:
+                        print(f"⚠️ DEBUG: Unexpected response for device {device_id}, using summary")
+                        device_data = device_summary
+                else:
+                    print(f"⚠️ DEBUG: Failed to get details for {device_id} (status {device_response.status_code}), using summary")
+                    device_data = device_summary
+                
+                # Step 3: Try to get device alias/display name from users service if available
+                # The display names like "HypeMen", "MiniSaunaFenx" might be stored as user preferences
+                if device_data and users_graphql_endpoint:
+                    try:
+                        print(f"🔍 DEBUG: Step 3 - Checking users service for device alias: {device_id}")
+                        # Try common queries for device preferences/aliases
+                        users_queries = [
+                            f"""
+                            query GetDeviceAlias {{
+                              deviceAlias(deviceId: "{device_id}")
+                            }}
+                            """,
+                            f"""
+                            query GetDevicePreference {{
+                              devicePreference(deviceId: "{device_id}") {{
+                                alias
+                                displayName
+                                name
+                              }}
+                            }}
+                            """,
+                            f"""
+                            query GetUserDevice {{
+                              userDevice(deviceId: "{device_id}") {{
+                                alias
+                                displayName
+                                name
+                              }}
+                            }}
+                            """
+                        ]
+                        
+                        for users_query in users_queries:
+                            try:
+                                users_response = await client.post(
+                                    users_graphql_endpoint,
+                                    headers=headers,
+                                    json={"query": users_query},
+                                    timeout=5.0
+                                )
+                                if users_response.status_code == 200:
+                                    users_result = users_response.json()
+                                    # Try to extract alias/displayName from response
+                                    if "data" in users_result:
+                                        for key, value in users_result["data"].items():
+                                            if value and isinstance(value, (str, dict)):
+                                                if isinstance(value, str) and value:
+                                                    # Direct string value (alias)
+                                                    if not device_data.get("displayName"):
+                                                        device_data["displayName"] = value
+                                                        print(f"✅ DEBUG: Found alias from users service: {value}")
+                                                        break
+                                                elif isinstance(value, dict):
+                                                    # Object with alias/displayName fields
+                                                    alias = value.get("alias") or value.get("displayName") or value.get("name")
+                                                    if alias and not device_data.get("displayName"):
+                                                        device_data["displayName"] = alias
+                                                        print(f"✅ DEBUG: Found alias from users service: {alias}")
+                                                        break
+                            except Exception as e:
+                                # Continue to next query if this one fails
+                                continue
+                    except Exception as e:
+                        print(f"⚠️ DEBUG: Could not query users service for alias: {e}")
+                
+                if device_data:
+                    enriched_devices.append(device_data)
+            
+            print(f"✅ DEBUG: Returning {len(enriched_devices)} enriched devices")
+            return {"devices": enriched_devices}
     
     async def _get_devices_graphql(self, id_token: str, config: Dict[str, Any]) -> Dict[str, Any]:
         """Get devices using GraphQL API - should have displayName and more complete data"""
@@ -342,9 +544,13 @@ class HarviaAPIService:
             return {"devices": []}
     
     async def _get_devices_rest(self, id_token: str, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Get devices using REST API - tries multiple endpoints"""
+        """
+        Get devices using REST API - tries multiple endpoints.
+        The REST API might have the 'name' attribute in the attr array that GraphQL doesn't show.
+        """
         
         # Try different endpoint combinations
+        # Priority: device endpoint first (most likely to have name attribute per docs)
         endpoints_to_try = [
             ("device", "/devices"),
             ("users", "/users/devices"),  # Try users service for device preferences/names
@@ -366,8 +572,11 @@ class HarviaAPIService:
             
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
+                    # Add query parameters for pagination
+                    params = {"maxResults": 100}
                     response = await client.get(
                         url,
+                        params=params,
                         headers={
                             "Content-Type": "application/json",
                             "Authorization": f"Bearer {id_token}"
@@ -378,8 +587,19 @@ class HarviaAPIService:
                     print(f"📡 DEBUG: Response body: {response.text[:500]}")
                     
                     if response.status_code == 200:
+                        result = response.json()
                         print(f"✅ DEBUG: Successfully fetched devices from {endpoint_key} endpoint!")
-                        return response.json()
+                        # REST API might return devices with 'name' attribute in attr array
+                        # Check if any device has a name attribute
+                        devices = result.get("devices", [])
+                        if devices:
+                            for device in devices[:1]:  # Check first device
+                                attrs = device.get("attr", [])
+                                if attrs:
+                                    attr_dict = {item.get("key"): item.get("value") for item in attrs if item.get("key")}
+                                    if "name" in attr_dict:
+                                        print(f"✅ DEBUG: REST API has 'name' attributes! Found: {attr_dict.get('name')}")
+                        return result
                     elif response.status_code in [401, 403]:
                         error_data = response.json() if response.text else {}
                         error_message = error_data.get("message", error_data.get("Message", f"HTTP {response.status_code}"))
@@ -547,6 +767,76 @@ class HarviaAPIService:
                 return response.json()
         except httpx.HTTPError as e:
             raise HarviaAPIError(f"Command request failed: {str(e)}")
+    
+    async def update_device_name(
+        self,
+        id_token: str,
+        device_id: str,
+        display_name: str
+    ) -> Dict[str, Any]:
+        """
+        Update device display name using devicesUpdate mutation.
+        
+        Args:
+            id_token: JWT ID token from authentication
+            device_id: Device identifier
+            display_name: The display name to set (will be stored as "name" attribute)
+        
+        Returns:
+            Dict containing updated device
+        """
+        try:
+            config = await self._get_api_configuration()
+            device_graphql_endpoint = config.get("GraphQL", {}).get("device", {}).get("https")
+            
+            if not device_graphql_endpoint:
+                raise HarviaAPIError("GraphQL device endpoint not found in configuration")
+            
+            # Use devicesUpdate mutation to set the "name" attribute
+            mutation = f"""
+            mutation UpdateDeviceName {{
+              devicesUpdate(
+                deviceId: "{device_id}"
+                attributes: [
+                  {{ key: "name", value: "{display_name}" }}
+                ]
+              ) {{
+                id
+                type
+                attr {{
+                  key
+                  value
+                }}
+              }}
+            }}
+            """
+            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    device_graphql_endpoint,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {id_token}"
+                    },
+                    json={"query": mutation}
+                )
+                
+                if response.status_code == 401:
+                    raise HarviaAPIError("Unauthorized - token may be expired", 401)
+                
+                if response.status_code != 200:
+                    error_data = response.json() if response.text else {}
+                    error_message = error_data.get("errors", [{}])[0].get("message", "Failed to update device name")
+                    raise HarviaAPIError(error_message, response.status_code)
+                
+                result = response.json()
+                if "errors" in result:
+                    error_msg = result["errors"][0].get("message", "Unknown GraphQL error")
+                    raise HarviaAPIError(f"GraphQL error: {error_msg}")
+                
+                return result.get("data", {}).get("devicesUpdate", {})
+        except httpx.HTTPError as e:
+            raise HarviaAPIError(f"Update device name request failed: {str(e)}")
     
     async def set_device_target(
         self,

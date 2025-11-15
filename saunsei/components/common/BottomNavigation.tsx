@@ -12,7 +12,8 @@ const NAV_ITEMS = [
   { icon: "🏠", label: "Home", route: "/(tabs)" as const },
   { icon: "📍", label: "Map", route: "/(tabs)/trips" as const },
   { icon: "📱", label: "Feed", route: "/(tabs)/social" as const },
-  { icon: "🏆", label: "Rankings", route: "/(tabs)/devices" as const },
+  { icon: "🏆", label: "Rankings", route: "/(tabs)/leaderboard" as const },
+  { icon: "📡", label: "Devices", route: "/(tabs)/devices" as const },
   { icon: "❤️", label: "Health", route: "/(tabs)/health" as const },
 ]
 
