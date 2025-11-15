@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from models import model_manager
-from routes import knn_router, svm_router, decision_tree_router, random_forest_router
+from routes import knn_router, svm_router, decision_tree_router, random_forest_router, users_router
+from database import create_db_and_tables
 
 
 app = FastAPI(
@@ -19,11 +20,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(knn_router)
-app.include_router(svm_router)
-app.include_router(decision_tree_router)
-app.include_router(random_forest_router)
+# Include routers with /api prefix
+app.include_router(knn_router, prefix="/api")
+app.include_router(svm_router, prefix="/api")
+app.include_router(decision_tree_router, prefix="/api")
+app.include_router(random_forest_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
+
+
+@app.on_event("startup")
+def on_startup():
+    """Initialize database tables on startup"""
+    create_db_and_tables()
 
 
 @app.get("/")

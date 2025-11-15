@@ -1,13 +1,25 @@
 # AI Service
 
-A simple FastAPI service with machine learning models including K-Nearest Neighbors and Support Vector Machines.
+A FastAPI service with machine learning models (K-Nearest Neighbors, SVM, Decision Tree, Random Forest) and PostgreSQL database integration using SQLModel.
 
 ## Setup
 
-Install dependencies using uv:
+### 1. Install dependencies using uv:
 
 ```bash
 uv sync
+```
+
+### 2. Start PostgreSQL database:
+
+```bash
+docker-compose up -d
+```
+
+### 3. Run database migrations:
+
+```bash
+uv run alembic upgrade head
 ```
 
 ## Run the Application
@@ -17,6 +29,25 @@ uv run uvicorn main:app --reload
 ```
 
 The API will be available at `http://localhost:8000`
+
+## Project Structure
+
+```
+ai-service/
+├── main.py              # FastAPI application entry point
+├── models.py            # ML model implementations
+├── schemas.py           # Pydantic schemas for API
+├── database.py          # Database connection setup
+├── db_models/           # SQLModel database models
+├── routes/              # API routes organized by model type
+├── alembic/             # Database migrations
+└── docker-compose.yaml  # PostgreSQL container setup
+```
+
+## Documentation
+
+- **API Documentation**: See [http://localhost:8000/docs](http://localhost:8000/docs) (Swagger UI)
+- **Database Guide**: See [DATABASE.md](DATABASE.md) for SQLModel and migration instructions
 
 ## API Documentation
 
@@ -53,3 +84,12 @@ predict_data = {
 }
 response = requests.post("http://localhost:8000/models/knn/predict", json=predict_data)
 ```
+
+## Database
+
+The project uses PostgreSQL with SQLModel ORM. See [DATABASE.md](DATABASE.md) for:
+
+- Database setup and configuration
+- Working with models
+- Running migrations with Alembic
+- Query examples
