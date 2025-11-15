@@ -1,217 +1,139 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View, Text, TouchableOpacity, TextInput } from 'react-native';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
-import { mockSocialFeed } from '@/services/mockData';
-import { SaunaSession } from '@/types/sauna';
+import React from "react"
+import { ScrollView, StyleSheet, View, TouchableOpacity } from "react-native"
+import { LinearGradient } from "expo-linear-gradient"
+import { ThemedView } from "@/components/themed-view"
+import { ThemedText } from "@/components/themed-text"
+import { AppHeader } from "@/components/common/AppHeader"
+import { UpcomingSessionCard } from "@/components/feed/UpcomingSessionCard"
+import { FeedSessionCard } from "@/components/feed/FeedSessionCard"
 
 export default function SocialScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
-  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
-  const [commentText, setCommentText] = useState<{ [key: string]: string }>({});
-
-  const formatTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  const toggleLike = (sessionId: string) => {
-    const newLiked = new Set(likedPosts);
-    if (newLiked.has(sessionId)) {
-      newLiked.delete(sessionId);
-    } else {
-      newLiked.add(sessionId);
-    }
-    setLikedPosts(newLiked);
-  };
-
-  const toggleExpanded = (sessionId: string) => {
-    const newExpanded = new Set(expandedPosts);
-    if (newExpanded.has(sessionId)) {
-      newExpanded.delete(sessionId);
-    } else {
-      newExpanded.add(sessionId);
-    }
-    setExpandedPosts(newExpanded);
-  };
-
-  const getTempColor = (temp: number) => {
-    if (temp >= 90) return '#FF4444';
-    if (temp >= 80) return '#FF8800';
-    if (temp >= 70) return '#FFB800';
-    return '#4CAF50';
-  };
-
   return (
     <ThemedView style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView} 
-        contentContainerStyle={styles.scrollContent}
+      <AppHeader />
+
+      <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <ThemedText type="title" style={styles.headerTitle}>Sauna Community 🔥</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            See what others are enjoying
-          </ThemedText>
+        {/* Host Sauna Session Button */}
+        <View style={styles.buttonSection}>
+          <TouchableOpacity activeOpacity={0.8}>
+            <LinearGradient
+              colors={["#C9B59C", "#BDA78F"]}
+              style={styles.hostButton}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <ThemedText style={styles.hostButtonIcon}>➕</ThemedText>
+              <ThemedText style={styles.hostButtonText}>
+                Host Sauna Session
+              </ThemedText>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
 
-        {/* Social Feed */}
-        {mockSocialFeed.map((session: SaunaSession) => {
-          const isLiked = likedPosts.has(session.id);
-          const isExpanded = expandedPosts.has(session.id);
-          const displayLikes = session.likes + (isLiked ? 1 : 0);
+        {/* Upcoming Sessions Section */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Upcoming Sessions</ThemedText>
 
-          return (
-            <View key={session.id} style={styles.postCard}>
-              {/* User Header */}
-              <View style={styles.postHeader}>
-                <View style={styles.userInfo}>
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{session.userAvatar || '👤'}</Text>
-                  </View>
-                  <View>
-                    <ThemedText type="defaultSemiBold" style={{ color: '#3A2F23' }}>{session.userName}</ThemedText>
-                    <ThemedText style={styles.timestamp}>
-                      {formatTimeAgo(session.startTime)}
-                    </ThemedText>
-                  </View>
-                </View>
-                <Text style={styles.menuIcon}>⋯</Text>
-              </View>
+          <View style={styles.sessionsContainer}>
+            <UpcomingSessionCard
+              hostName="Artjom is hosting"
+              saunaName="Artjom's Home Sauna"
+              dateTime="Tomorrow at 6:00 PM"
+              attending={3}
+              status="going"
+            />
 
-              {/* Session Info */}
-              <View style={styles.sessionInfo}>
-                <View style={styles.locationRow}>
-                  <Text style={styles.locationIcon}>📍</Text>
-                  <ThemedText type="defaultSemiBold" style={styles.locationText}>
-                    {session.location.name}
-                  </ThemedText>
-                </View>
-                
-                {session.notes && (
-                  <ThemedText style={styles.postNotes}>{session.notes}</ThemedText>
-                )}
-              </View>
+            <UpcomingSessionCard
+              hostName="You are hosting"
+              saunaName="Seppo's Home Sauna"
+              dateTime="Nov 18, 10:00 AM"
+              attending={2}
+              status="host"
+            />
+          </View>
+        </View>
 
-              {/* Stats Banner */}
-              <View style={styles.statsBanner}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statIcon}>⏱️</Text>
-                  <ThemedText style={styles.statText}>{session.duration} min</ThemedText>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statIcon}>🌡️</Text>
-                  <ThemedText style={[styles.statText, { color: getTempColor(session.averageTemp) }]}>
-                    {session.averageTemp}°C
-                  </ThemedText>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statIcon}>🔥</Text>
-                  <ThemedText style={[styles.statText, { color: getTempColor(session.maxTemp) }]}>
-                    {session.maxTemp}°C max
-                  </ThemedText>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statIcon}>💧</Text>
-                  <ThemedText style={styles.statText}>{session.averageHumidity}%</ThemedText>
-                </View>
-              </View>
+        {/* Recent Activity Section */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Recent Activity</ThemedText>
+        </View>
 
-              {/* Actions */}
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => toggleLike(session.id)}>
-                  <Text style={styles.actionIcon}>{isLiked ? '❤️' : '🤍'}</Text>
-                  <ThemedText style={styles.actionText}>{displayLikes}</ThemedText>
-                </TouchableOpacity>
+        <View style={styles.feedContainer}>
+          <FeedSessionCard
+            userName="Seppo Seppälä"
+            dateTime="2025-11-14 at 18:30"
+            saunaName="Sompasauna"
+            duration={45}
+            currentTemp={90}
+            avgTemp={85}
+            maxTemp={90}
+            calories={320}
+            kudos={12}
+            comments={3}
+          />
 
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => toggleExpanded(session.id)}>
-                  <Text style={styles.actionIcon}>💬</Text>
-                  <ThemedText style={styles.actionText}>{session.comments.length}</ThemedText>
-                </TouchableOpacity>
+          <FeedSessionCard
+            userName="Alexander Tamm"
+            dateTime="2025-11-14 at 16:15"
+            saunaName="Alex's Home Sauna"
+            duration={60}
+            currentTemp={88}
+            avgTemp={83}
+            maxTemp={88}
+            calories={410}
+            kudos={24}
+            comments={5}
+          />
 
-                <TouchableOpacity style={styles.actionButton}>
-                  <Text style={styles.actionIcon}>🔗</Text>
-                  <ThemedText style={styles.actionText}>Share</ThemedText>
-                </TouchableOpacity>
-              </View>
+          <FeedSessionCard
+            userName="Mariusz Polak"
+            dateTime="2025-11-13 at 20:00"
+            saunaName="Unisport sauna"
+            duration={30}
+            currentTemp={85}
+            avgTemp={80}
+            maxTemp={85}
+            calories={215}
+            kudos={18}
+            comments={2}
+          />
 
-              {/* Comments Section */}
-              {isExpanded && (
-                <View style={styles.commentsSection}>
-                  <View style={styles.commentsDivider} />
-                  
-                  {session.comments.length > 0 && (
-                    <View style={styles.commentsList}>
-                      {session.comments.map((comment) => (
-                        <View key={comment.id} style={styles.comment}>
-                          <View style={styles.commentAvatar}>
-                            <Text style={styles.commentAvatarText}>
-                              {comment.userAvatar || '👤'}
-                            </Text>
-                          </View>
-                          <View style={styles.commentContent}>
-                            <ThemedText style={styles.commentUser}>
-                              {comment.userName}
-                            </ThemedText>
-                            <ThemedText style={styles.commentText}>{comment.text}</ThemedText>
-                            <ThemedText style={styles.commentTime}>
-                              {formatTimeAgo(comment.timestamp)}
-                            </ThemedText>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  )}
+          <FeedSessionCard
+            userName="Artjom Wickström"
+            dateTime="2025-11-13 at 14:45"
+            saunaName="Urban Heat Studio"
+            duration={50}
+            currentTemp={92}
+            avgTemp={88}
+            maxTemp={92}
+            calories={380}
+            kudos={31}
+            comments={7}
+          />
 
-                  {/* Add Comment */}
-                  <View style={styles.addComment}>
-                    <TextInput
-                      style={[
-                        styles.commentInput,
-                        {
-                          color: colors.text,
-                        },
-                      ]}
-                      placeholder="Add a comment..."
-                      placeholderTextColor="#C9B59C"
-                      value={commentText[session.id] || ''}
-                      onChangeText={(text) =>
-                        setCommentText({ ...commentText, [session.id]: text })
-                      }
-                    />
-                    <TouchableOpacity
-                      style={styles.sendButton}
-                      onPress={() => {
-                        // Handle comment submission
-                        setCommentText({ ...commentText, [session.id]: '' });
-                      }}>
-                      <Text style={styles.sendIcon}>↑</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            </View>
-          );
-        })}
+          <FeedSessionCard
+            userName="Gabi Hämäläinen"
+            dateTime="2025-11-12 at 19:20"
+            saunaName="Harju Sauna"
+            duration={40}
+            currentTemp={89}
+            avgTemp={84}
+            maxTemp={89}
+            calories={295}
+            kudos={15}
+            comments={4}
+          />
+        </View>
+
+        {/* Bottom padding for navigation */}
+        <View style={styles.bottomPadding} />
       </ScrollView>
     </ThemedView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -222,217 +144,56 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
+  content: {
     paddingBottom: 100,
   },
-  header: {
-    padding: 24,
-    paddingTop: 64,
-    backgroundColor: "transparent",
-    marginBottom: 8,
+  buttonSection: {
+    paddingHorizontal: 24,
+    marginTop: 24,
+    marginBottom: 24,
+    alignItems: "center",
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#3A2F23',
-    marginBottom: 6,
+  hostButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    elevation: 5,
+    width: 200,
   },
-  subtitle: {
-    fontSize: 15,
-    color: '#B8A58B',
-    marginTop: 2,
+  hostButtonIcon: {
+    fontSize: 16,
+    color: "#FFFFFF",
   },
-  postCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#3A2F23',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#E8E4DF',
+  hostButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#FFFFFF",
   },
-  postHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  section: {
+    paddingHorizontal: 24,
     marginBottom: 12,
   },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#C9B59C',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#D9CFC7',
-  },
-  avatarText: {
-    fontSize: 24,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#B8A58B',
-  },
-  menuIcon: {
+  sectionTitle: {
     fontSize: 20,
-    paddingHorizontal: 8,
-    color: '#B8A58B',
-  },
-  sessionInfo: {
+    fontWeight: "600",
+    color: "#3A2F23",
     marginBottom: 12,
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
-  },
-  locationIcon: {
-    fontSize: 16,
-  },
-  locationText: {
-    fontSize: 15,
-    color: '#3A2F23',
-  },
-  postNotes: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#3A2F23',
-  },
-  statsBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 16,
-    backgroundColor: '#F9F8F6',
-    borderWidth: 1,
-    borderColor: '#E8E4DF',
-  },
-  statItem: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  statIcon: {
-    fontSize: 16,
-  },
-  statText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#3A2F23',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0EDE8',
-    marginTop: 4,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 4,
-  },
-  actionIcon: {
-    fontSize: 18,
-  },
-  actionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3A2F23',
-  },
-  commentsSection: {
-    marginTop: 12,
-  },
-  commentsDivider: {
-    height: 1,
-    backgroundColor: '#E8E4DF',
-    marginBottom: 12,
-  },
-  commentsList: {
+  sessionsContainer: {
     gap: 12,
-    marginBottom: 12,
   },
-  comment: {
-    flexDirection: 'row',
-    gap: 10,
+  feedContainer: {
+    gap: 0,
   },
-  commentAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#C9B59C',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D9CFC7',
+  bottomPadding: {
+    height: 24,
   },
-  commentAvatarText: {
-    fontSize: 16,
-  },
-  commentContent: {
-    flex: 1,
-  },
-  commentUser: {
-    fontSize: 13,
-    marginBottom: 2,
-    color: '#3A2F23',
-    fontWeight: '600',
-  },
-  commentText: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 2,
-    color: '#3A2F23',
-  },
-  commentTime: {
-    fontSize: 11,
-    color: '#B8A58B',
-  },
-  addComment: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  commentInput: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 20,
-    fontSize: 14,
-    backgroundColor: '#F9F8F6',
-    borderWidth: 1,
-    borderColor: '#E8E4DF',
-  },
-  sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#C9B59C',
-    shadowColor: '#C9B59C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  sendIcon: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
-
+})

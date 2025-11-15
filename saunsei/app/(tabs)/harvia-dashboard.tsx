@@ -11,7 +11,6 @@ import { SessionCard } from "@/components/common/SessionCard"
 import { BottomNavigation } from "@/components/common/BottomNavigation"
 
 export default function HarviaDashboardScreen() {
-
   return (
     <ThemedView style={styles.container}>
       <AppHeader
