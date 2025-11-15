@@ -75,6 +75,7 @@ class HarviaAPIService:
                 raise HarviaAPIError("REST API endpoint not found in configuration")
             
             # Authenticate with Harvia API
+            print(f"🌐 DEBUG: Authenticating with Harvia API at: {rest_api_base}/auth/token")
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
                     f"{rest_api_base}/auth/token",
@@ -82,9 +83,19 @@ class HarviaAPIService:
                     json={"username": username, "password": password}
                 )
                 
+                print(f"📡 DEBUG: Harvia API response status: {response.status_code}")
+                print(f"📡 DEBUG: Harvia API response headers: {dict(response.headers)}")
+                
                 if response.status_code != 200:
-                    error_data = response.json() if response.text else {}
-                    error_message = error_data.get("message", "Authentication failed")
+                    error_text = response.text
+                    print(f"❌ DEBUG: Harvia API error response body: {error_text[:500]}")
+                    try:
+                        error_data = response.json() if error_text else {}
+                        print(f"❌ DEBUG: Parsed error data: {error_data}")
+                        error_message = error_data.get("message") or error_data.get("error") or error_data.get("Message") or "Authentication failed"
+                    except Exception as parse_error:
+                        print(f"⚠️ DEBUG: Could not parse error JSON: {parse_error}")
+                        error_message = error_text[:200] if error_text else "Authentication failed"
                     raise HarviaAPIError(error_message, response.status_code)
                 
                 tokens = response.json()
@@ -143,6 +154,8 @@ class HarviaAPIService:
         """
         Get list of user's devices from Harvia API.
         
+        Uses REST API GET /devices endpoint (GraphQL returns 401 for hackathon account).
+        
         Args:
             id_token: JWT token from authentication (idToken or accessToken)
         
@@ -152,9 +165,181 @@ class HarviaAPIService:
         Raises:
             HarviaAPIError: If request fails
         """
-        # GraphQL requires special auth we don't have, so use REST API directly
         config = await self._get_api_configuration()
+        
+        # Use REST API directly - GraphQL requires special permissions that hackathon account doesn't have
         return await self._get_devices_rest(id_token, config)
+    
+    async def _get_devices_graphql(self, id_token: str, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Get devices using GraphQL API - should have displayName and more complete data"""
+        
+        # Try both device and users GraphQL endpoints (display names might be in users service)
+        device_graphql_endpoint = config.get("GraphQL", {}).get("device", {}).get("https")
+        users_graphql_endpoint = config.get("GraphQL", {}).get("users", {}).get("https")
+        schema_url = config.get("GraphQL", {}).get("device", {}).get("schemaUrl")
+        
+        graphql_endpoint = device_graphql_endpoint
+        
+        if not graphql_endpoint:
+            raise HarviaAPIError("GraphQL device endpoint not found in configuration")
+        
+        print(f"🌐 DEBUG: Device GraphQL endpoint: {graphql_endpoint}")
+        print(f"🌐 DEBUG: Users GraphQL endpoint: {users_graphql_endpoint}")
+        print(f"📋 DEBUG: GraphQL schema URL: {schema_url}")
+        
+        # Try introspection query first to see what's available
+        introspection_query = """
+        {
+          __schema {
+            queryType {
+              fields {
+                name
+                description
+              }
+            }
+          }
+        }
+        """
+        
+        # Standard query attempt - trying common patterns
+        # Common GraphQL patterns: listDevices, getDevices, devices, listUserDevices
+        query = """
+        query GetDevices {
+          listDevices {
+            items {
+              name
+              type
+              displayName
+              attr {
+                key
+                value
+              }
+              connected
+              lastActivity
+              lastConnectionTime
+              createdAt
+              updatedAt
+            }
+          }
+        }
+        """
+        
+        print(f"🌐 DEBUG: Sending GraphQL query to: {graphql_endpoint}")
+        print(f"📝 DEBUG: Query: {query.strip()}")
+        
+        # First try introspection to see available queries
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            print(f"🔍 DEBUG: First attempting introspection query to see available queries...")
+            
+            # AWS AppSync might need additional headers
+            intro_headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {id_token}",
+                "Accept": "application/json",
+            }
+            
+            intro_response = await client.post(
+                graphql_endpoint,
+                headers=intro_headers,
+                json={"query": introspection_query}
+            )
+            
+            print(f"📡 DEBUG: Introspection response status: {intro_response.status_code}")
+            
+            if intro_response.status_code == 200:
+                intro_result = intro_response.json()
+                print(f"✅ DEBUG: Introspection successful!")
+                if "data" in intro_result and "__schema" in intro_result["data"]:
+                    queries = intro_result["data"]["__schema"]["queryType"]["fields"]
+                    print(f"📋 DEBUG: Available queries: {[q['name'] for q in queries[:10]]}")
+            else:
+                error_text = intro_response.text
+                print(f"❌ DEBUG: Introspection failed with {intro_response.status_code}")
+                print(f"❌ DEBUG: Error: {error_text[:500]}")
+                
+                # Check if it's an introspection-disabled error vs auth error
+                if "introspection" in error_text.lower():
+                    print(f"💡 DEBUG: GraphQL introspection is disabled on this endpoint")
+                elif "401" in str(intro_response.status_code):
+                    print(f"💡 DEBUG: Authentication issue - token may not have GraphQL permissions")
+                    print(f"💡 DEBUG: Token type: JWT from Cognito")
+                    print(f"💡 DEBUG: Trying with different auth approaches...")
+        
+        # Now try the actual query with multiple auth approaches
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Try approach 1: Standard Bearer token (same as REST API)
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {id_token}",
+                "Accept": "application/json",
+            }
+            
+            print(f"🔑 DEBUG: Attempt 1 - Using Bearer token (same as working REST API)")
+            print(f"🔑 DEBUG: Token (first 30 chars): {id_token[:30]}...")
+            
+            response = await client.post(
+                graphql_endpoint,
+                headers=headers,
+                json={"query": query}
+            )
+            
+            # If that fails, try the users GraphQL endpoint (display names might be there)
+            if response.status_code == 401 and users_graphql_endpoint:
+                print(f"⚠️ DEBUG: Device endpoint returned 401, trying USERS GraphQL endpoint...")
+                print(f"🌐 DEBUG: Trying users endpoint: {users_graphql_endpoint}")
+                
+                # Try a users-focused query
+                users_query = """
+                query GetUserDevices {
+                  listUserDevices {
+                    items {
+                      deviceId
+                      deviceName
+                      displayName
+                      alias
+                      name
+                    }
+                  }
+                }
+                """
+                
+                response = await client.post(
+                    users_graphql_endpoint,
+                    headers=headers,
+                    json={"query": users_query}
+                )
+                print(f"📡 DEBUG: Users endpoint response status: {response.status_code}")
+            
+            print(f"📡 DEBUG: GraphQL response status: {response.status_code}")
+            print(f"📡 DEBUG: Response headers: {dict(response.headers)}")
+            
+            if response.status_code == 401:
+                error_text = response.text
+                print(f"❌ DEBUG: GraphQL 401 with Bearer prefix: {error_text[:500]}")
+                print(f"💡 DEBUG: This might be a permissions issue with the hackathon account")
+                print(f"💡 DEBUG: GraphQL endpoints may require elevated permissions not available in demo/hackathon tokens")
+                raise HarviaAPIError(f"GraphQL Unauthorized (401) - Hackathon account may not have GraphQL access")
+            elif response.status_code != 200:
+                error_text = response.text
+                print(f"❌ DEBUG: GraphQL error response: {error_text[:1000]}")
+                raise HarviaAPIError(f"GraphQL request failed: {response.status_code}")
+            
+            result = response.json()
+            print(f"✅ DEBUG: GraphQL response keys: {result.keys()}")
+            
+            # Extract devices from GraphQL response
+            if "data" in result and "listDevices" in result["data"]:
+                devices = result["data"]["listDevices"].get("items", [])
+                print(f"✅ DEBUG: Found {len(devices)} devices from GraphQL")
+                return {"devices": devices}
+            elif "errors" in result:
+                error_msg = result["errors"][0].get("message", "Unknown GraphQL error")
+                print(f"❌ DEBUG: GraphQL errors: {result['errors']}")
+                raise HarviaAPIError(f"GraphQL error: {error_msg}")
+            else:
+                print(f"⚠️ DEBUG: Unexpected GraphQL response structure: {result}")
+            
+            return {"devices": []}
     
     async def _get_devices_rest(self, id_token: str, config: Dict[str, Any]) -> Dict[str, Any]:
         """Get devices using REST API - tries multiple endpoints"""
@@ -162,8 +347,9 @@ class HarviaAPIService:
         # Try different endpoint combinations
         endpoints_to_try = [
             ("device", "/devices"),
-            ("generics", "/devices"),
+            ("users", "/users/devices"),  # Try users service for device preferences/names
             ("users", "/devices"),
+            ("generics", "/devices"),
         ]
         
         last_error = None

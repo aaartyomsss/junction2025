@@ -1,5 +1,5 @@
-import React from "react"
-import { View, StyleSheet } from "react-native"
+import React, { useState } from "react"
+import { View, StyleSheet, TouchableOpacity, Animated } from "react-native"
 import { ThemedText } from "@/components/themed-text"
 
 interface SessionCardProps {
@@ -17,29 +17,55 @@ export function SessionCard({
   avgTemp,
   maxTemp,
 }: SessionCardProps) {
+  const [scaleValue] = useState(new Animated.Value(1))
+
+  const handlePressIn = () => {
+    Animated.spring(scaleValue, {
+      toValue: 0.97,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handlePressOut = () => {
+    Animated.spring(scaleValue, {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start()
+  }
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.locationInfo}>
-          <ThemedText style={styles.locationName}>{locationName}</ThemedText>
-          <ThemedText style={styles.date}>{date}</ThemedText>
+    <TouchableOpacity
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
+    >
+      <Animated.View
+        style={[styles.container, { transform: [{ scale: scaleValue }] }]}
+      >
+        <View style={styles.header}>
+          <View style={styles.locationInfo}>
+            <ThemedText style={styles.locationName}>{locationName}</ThemedText>
+            <ThemedText style={styles.date}>{date}</ThemedText>
+          </View>
+          <ThemedText style={styles.duration}>{duration}</ThemedText>
         </View>
-        <ThemedText style={styles.duration}>{duration}</ThemedText>
-      </View>
 
-      <View style={styles.divider} />
+        <View style={styles.divider} />
 
-      <View style={styles.stats}>
-        <View style={styles.statItem}>
-          <ThemedText style={styles.statIcon}>🌡️</ThemedText>
-          <ThemedText style={styles.statText}>{avgTemp} avg</ThemedText>
+        <View style={styles.stats}>
+          <View style={styles.statItem}>
+            <ThemedText style={styles.statIcon}>🌡️</ThemedText>
+            <ThemedText style={styles.statText}>{avgTemp} avg</ThemedText>
+          </View>
+          <View style={styles.statItem}>
+            <ThemedText style={styles.statIcon}>🔥</ThemedText>
+            <ThemedText style={styles.statText}>{maxTemp} max</ThemedText>
+          </View>
         </View>
-        <View style={styles.statItem}>
-          <ThemedText style={styles.statIcon}>🔥</ThemedText>
-          <ThemedText style={styles.statText}>{maxTemp} max</ThemedText>
-        </View>
-      </View>
-    </View>
+      </Animated.View>
+    </TouchableOpacity>
   )
 }
 

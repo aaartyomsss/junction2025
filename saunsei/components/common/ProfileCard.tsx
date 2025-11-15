@@ -1,5 +1,5 @@
-import React from "react"
-import { View, StyleSheet, Image } from "react-native"
+import React, { useState } from "react"
+import { View, StyleSheet, Image, TouchableOpacity, Animated } from "react-native"
 import { ThemedText } from "@/components/themed-text"
 
 interface ProfileCardProps {
@@ -13,26 +13,52 @@ export function ProfileCard({
   sessionCount,
   avatarUrl,
 }: ProfileCardProps) {
+  const [scaleValue] = useState(new Animated.Value(1))
+
+  const handlePressIn = () => {
+    Animated.spring(scaleValue, {
+      toValue: 0.98,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handlePressOut = () => {
+    Animated.spring(scaleValue, {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start()
+  }
+
   return (
-    <View style={styles.container}>
-      <View style={styles.avatarContainer}>
-        {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <ThemedText style={styles.avatarText}>
-              {name.charAt(0).toUpperCase()}
-            </ThemedText>
-          </View>
-        )}
-      </View>
-      <View style={styles.infoContainer}>
-        <ThemedText type="title" style={styles.name}>
-          {name}
-        </ThemedText>
-        <ThemedText style={styles.sessions}>{sessionCount} sessions</ThemedText>
-      </View>
-    </View>
+    <TouchableOpacity
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
+    >
+      <Animated.View
+        style={[styles.container, { transform: [{ scale: scaleValue }] }]}
+      >
+        <View style={styles.avatarContainer}>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <ThemedText style={styles.avatarText}>
+                {name.charAt(0).toUpperCase()}
+              </ThemedText>
+            </View>
+          )}
+        </View>
+        <View style={styles.infoContainer}>
+          <ThemedText type="title" style={styles.name}>
+            {name}
+          </ThemedText>
+          <ThemedText style={styles.sessions}>{sessionCount} sessions</ThemedText>
+        </View>
+      </Animated.View>
+    </TouchableOpacity>
   )
 }
 
@@ -65,6 +91,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#C9B59C",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#C9B59C",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 4,
   },
   avatarText: {
     fontSize: 32,

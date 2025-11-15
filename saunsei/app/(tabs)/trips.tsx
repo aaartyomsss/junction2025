@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 100, // Space for bottom navigation
+    paddingBottom: 120, // Space for floating bottom navigation
   },
   section: {
     paddingHorizontal: 16,

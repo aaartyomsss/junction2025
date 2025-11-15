@@ -1,5 +1,5 @@
-import React from "react"
-import { View, StyleSheet, TouchableOpacity } from "react-native"
+import React, { useState } from "react"
+import { View, StyleSheet, TouchableOpacity, Animated } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { ThemedText } from "@/components/themed-text"
 
@@ -15,6 +15,38 @@ export function AppHeader({
   onNotificationPress,
 }: AppHeaderProps) {
   const insets = useSafeAreaInsets()
+  const [findButtonScale] = useState(new Animated.Value(1))
+  const [notifButtonScale] = useState(new Animated.Value(1))
+
+  const handleFindPressIn = () => {
+    Animated.spring(findButtonScale, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handleFindPressOut = () => {
+    Animated.spring(findButtonScale, {
+      toValue: 1,
+      friction: 3,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handleNotifPressIn = () => {
+    Animated.spring(notifButtonScale, {
+      toValue: 0.9,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handleNotifPressOut = () => {
+    Animated.spring(notifButtonScale, {
+      toValue: 1,
+      friction: 3,
+      useNativeDriver: true,
+    }).start()
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
@@ -27,27 +59,37 @@ export function AppHeader({
 
       <View style={styles.actions}>
         <TouchableOpacity
-          style={styles.findButton}
           onPress={onFindSaunaPress}
-          activeOpacity={0.7}
+          onPressIn={handleFindPressIn}
+          onPressOut={handleFindPressOut}
+          activeOpacity={1}
         >
-          <ThemedText style={styles.findIcon}>📍</ThemedText>
-          <ThemedText style={styles.findText}>Find Sauna</ThemedText>
+          <Animated.View
+            style={[styles.findButton, { transform: [{ scale: findButtonScale }] }]}
+          >
+            <ThemedText style={styles.findIcon}>📍</ThemedText>
+            <ThemedText style={styles.findText}>Find Sauna</ThemedText>
+          </Animated.View>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.notificationButton}
           onPress={onNotificationPress}
-          activeOpacity={0.7}
+          onPressIn={handleNotifPressIn}
+          onPressOut={handleNotifPressOut}
+          activeOpacity={1}
         >
-          <ThemedText style={styles.notificationIcon}>🔔</ThemedText>
-          {notificationCount > 0 && (
-            <View style={styles.badge}>
-              <ThemedText style={styles.badgeText}>
-                {notificationCount}
-              </ThemedText>
-            </View>
-          )}
+          <Animated.View
+            style={[styles.notificationButton, { transform: [{ scale: notifButtonScale }] }]}
+          >
+            <ThemedText style={styles.notificationIcon}>🔔</ThemedText>
+            {notificationCount > 0 && (
+              <View style={styles.badge}>
+                <ThemedText style={styles.badgeText}>
+                  {notificationCount}
+                </ThemedText>
+              </View>
+            )}
+          </Animated.View>
         </TouchableOpacity>
       </View>
     </View>
@@ -94,6 +136,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     gap: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   findIcon: {
     fontSize: 16,
@@ -114,6 +161,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   notificationIcon: {
     fontSize: 16,

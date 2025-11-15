@@ -131,7 +131,7 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        <View style={{ height: 80 }} />
+        <View style={{ height: 20 }} />
       </ScrollView>
     </ThemedView>
   )
@@ -146,19 +146,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 100,
+    alignItems: "stretch",
   },
   section: {
     marginHorizontal: 24,
     marginTop: 16,
+    width: "auto",
   },
   statsRow: {
     flexDirection: "row",
     gap: 12,
     marginBottom: 12,
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
   statCardHalf: {
     flex: 1,
+    minWidth: 150,
   },
   sectionTitle: {
     fontSize: 20,

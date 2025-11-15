@@ -84,6 +84,41 @@ export interface SaunaCreateRequest {
   added_by_user_id: number
 }
 
+export interface HarviaAuthResponse {
+  success: boolean
+  idToken: string
+  accessToken: string
+  refreshToken?: string
+  expiresIn: number
+}
+
+export interface HarviaAuthRequest {
+  username: string
+  password: string
+}
+
+export interface HarviaDevice {
+  name: string
+  type?: string
+  id?: string
+  isConnected?: boolean
+  batteryLevel?: number
+  signalStrength?: number
+  lastSeen?: string
+  location?: {
+    name?: string
+    latitude?: number
+    longitude?: number
+  }
+  currentReading?: {
+    temperature?: number
+    humidity?: number
+    timestamp?: string
+    heating?: boolean
+    targetTemp?: number
+  }
+}
+
 // ============================================
 // Main API Service Class
 // ============================================
@@ -136,11 +171,123 @@ class BackendApiService {
   }
 
   // ============================================
+  // HARVIA AUTHENTICATION
+  // ============================================
+
+  /**
+   * Authenticate with Harvia API
+   */
+  async harviaLogin(
+    username: string,
+    password: string
+  ): Promise<HarviaAuthResponse | null> {
+    try {
+      const response = await fetch(`${this.apiUrl}/harvia/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(
+          errorData.error || `Authentication failed: ${response.status}`
+        )
+      }
+
+      const result = await response.json()
+      return result
+    } catch (error) {
+      console.error("Harvia authentication failed:", error)
+      return null
+    }
+  }
+
+  /**
+   * Refresh Harvia authentication token
+   */
+  async harviaRefreshToken(
+    refreshToken: string,
+    email: string
+  ): Promise<HarviaAuthResponse | null> {
+    try {
+      const response = await fetch(`${this.apiUrl}/harvia/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refreshToken, email }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Token refresh failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      return result
+    } catch (error) {
+      console.error("Token refresh failed:", error)
+      return null
+    }
+  }
+
+  /**
+   * Get devices from Harvia API (requires authentication token)
+   */
+  async getHarviaDevices(token: string): Promise<DeviceStatus[]> {
+    try {
+      const response = await fetch(`${this.apiUrl}/harvia/devices`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(
+          errorData.error || `Failed to fetch Harvia devices: ${response.status}`
+        )
+      }
+
+      const result = await response.json()
+
+      if (!result.success || !result.devices) {
+        return []
+      }
+
+      // Map Harvia devices to DeviceStatus format
+      return result.devices.map((device: any) => ({
+        isConnected: device.isConnected ?? false,
+        deviceId: device.id || device.name,
+        deviceName: device.displayName || device.name, // Use displayName if available, fallback to device ID
+        batteryLevel: device.batteryLevel ?? 0,
+        signalStrength: device.signalStrength ?? 0,
+        deviceType: device.type || "unknown",
+        location: device.location
+          ? {
+              name: device.location.name || "Unknown",
+              latitude: device.location.latitude ?? 0,
+              longitude: device.location.longitude ?? 0,
+            }
+          : undefined,
+        lastSeen: device.lastSeen ? new Date(device.lastSeen) : undefined,
+      }))
+    } catch (error) {
+      console.error("Failed to fetch Harvia devices:", error)
+      return []
+    }
+  }
+
+  // ============================================
   // DEVICE MANAGEMENT
   // ============================================
 
   /**
-   * Get all devices from backend
+   * Get all devices from backend (mock devices - no auth required)
    */
   async getDevices(type?: "fenix" | "smart_sensor"): Promise<DeviceStatus[]> {
     try {
