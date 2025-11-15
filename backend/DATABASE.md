@@ -35,7 +35,7 @@ If not set, it defaults to the connection string in `database.py`.
 ## Project Structure
 
 ```
-ai-service/
+backend/
 ├── db_models/              # SQLModel database models
 │   ├── __init__.py
 │   ├── user.py            # User model example

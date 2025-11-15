@@ -1,118 +1,112 @@
-# Junction 2025 Backend
+# Junction Backend
 
-A baseline backend API built with Gin-Gonic web framework.
+Unified FastAPI backend that now powers every API surface in this repo:
 
-## Features
+- `/api/v1/...` mock sauna devices + user CRUD (ported from the Go service)
+- `/api/models/...` machine-learning endpoints (KNN, SVM, Decision Tree, Random Forest)
+- PostgreSQL/SQLModel stack with Alembic migrations
 
-- RESTful API structure
-- Environment-based configuration
-- Basic CRUD operations
-- Health check endpoint
-- Clean project structure
-
-## Prerequisites
-
-- Go 1.21 or higher
-- Git
-
-## Installation
-
-1. Clone the repository and navigate to the backend directory:
+## Quickstart
 
 ```bash
 cd backend
+
+# 1. Install dependencies (creates .venv if needed)
+uv sync
+
+# 2. (Optional) start postgres for SQLModel features
+docker-compose up -d
+
+# 3. Apply migrations when DB is running
+uv run python -m alembic upgrade head
+
+# 4. Run the API on the port expected by saunsei
+uv run python -m uvicorn main:app --reload --port 8080
 ```
 
-2. Install dependencies:
+Swagger UI + ReDoc live at `http://localhost:8080/docs` / `http://localhost:8080/redoc`.
 
-```bash
-go mod tidy
-```
-
-3. Copy the `.env` file and adjust settings if needed:
-
-```bash
-# .env is already included, modify PORT and GIN_MODE as needed
-```
-
-## Running the Server
-
-### Development mode
-
-```bash
-go run main.go
-```
-
-### Build and run
-
-```bash
-go build -o server
-./server
-```
-
-## API Endpoints
-
-### Health Check
-
-- `GET /health` - Check server status
-
-### API v1
-
-- `GET /api/v1/ping` - Simple ping endpoint
-- `GET /api/v1/users` - Get all users
-- `GET /api/v1/users/:id` - Get user by ID
-- `POST /api/v1/users` - Create new user
-- `PUT /api/v1/users/:id` - Update user
-- `DELETE /api/v1/users/:id` - Delete user
+> The Expo client already calls `http://localhost:8080/api/v1/...`, so no frontend changes are necessary after starting this service.
 
 ## Project Structure
 
 ```
 backend/
-├── main.go           # Application entry point
-├── go.mod           # Go module definition
-├── .env             # Environment variables
-├── handlers/        # Request handlers
-│   ├── health.go
-│   └── user.go
-├── models/          # Data models
-│   └── user.go
-└── routes/          # Route definitions
-    └── routes.go
+├── main.py              # FastAPI application entry point
+├── models.py            # ML model implementations
+├── schemas.py           # Pydantic schemas for API
+├── database.py          # Database connection setup
+├── db_models/           # SQLModel database models
+├── routes/              # API routes (ML + sauna backend)
+├── scripts/             # Data generators / helpers
+├── alembic/             # Database migrations
+├── docker-compose.yaml  # PostgreSQL container setup
+└── test_main.py         # Integration-style tests
 ```
 
-## Environment Variables
+## Unified Sauna Backend (migrated from Go)
 
-- `PORT` - Server port (default: 8080)
-- `GIN_MODE` - Gin mode: debug, release, or test (default: debug)
+The legacy Go service has been fully re-implemented inside FastAPI. All responses still match the JSON envelope (`success`, `data`, `error`) that `saunsei/services/backendApi.ts` expects.
+
+## Unified Sauna Backend (migrated from Go)
+
+The legacy Go service under `/backend` has been fully re-implemented inside the FastAPI app. You can now serve the Expo client and the ML endpoints from a single Python process.
+
+### Available endpoints
+
+```
+GET  /health
+GET  /api/v1/ping
+GET  /api/v1/devices
+GET  /api/v1/devices?type=fenix|smart_sensor
+GET  /api/v1/devices/{deviceId}
+GET  /api/v1/devices/{deviceId}/reading
+PUT  /api/v1/devices/{deviceId}/target  (body: { "targetTemp": 75-100 })
+GET  /api/v1/devices/stats
+
+GET  /api/v1/users
+GET  /api/v1/users/{id}
+POST /api/v1/users               (body: { "id", "name", "email" })
+PUT  /api/v1/users/{id}          (body: { "name", "email" })
+DELETE /api/v1/users/{id}
+```
+
+All responses match the JSON envelope that the Go handlers returned (`success`, `data`, `error`, etc.), so no changes are needed in `saunsei`'s `backendApi.ts`.
+
+## Available Models
+
+- K-Nearest Neighbors (KNN)
+- Support Vector Machine (SVM)
+- Decision Tree
+- Random Forest
 
 ## Example Usage
 
-### Get all users
+```python
+import requests
 
-```bash
-curl http://localhost:8080/api/v1/users
+# Health check
+response = requests.get("http://localhost:8080/health")
+
+# Train a model
+train_data = {
+    "X": [[1, 2], [2, 3], [3, 4], [4, 5]],
+    "y": [0, 0, 1, 1]
+}
+response = requests.post("http://localhost:8080/api/models/knn/train", json=train_data)
+
+# Make predictions
+predict_data = {
+    "X": [[2.5, 3.5]]
+}
+response = requests.post("http://localhost:8080/api/models/knn/predict", json=predict_data)
 ```
 
-### Create a user
+## Database
 
-```bash
-curl -X POST http://localhost:8080/api/v1/users \
-  -H "Content-Type: application/json" \
-  -d '{"id":"3","name":"Alice Johnson","email":"alice@example.com"}'
-```
+The project uses PostgreSQL with SQLModel ORM. See [DATABASE.md](DATABASE.md) for:
 
-### Get user by ID
-
-```bash
-curl http://localhost:8080/api/v1/users/1
-```
-
-## Next Steps
-
-- Add database integration (PostgreSQL, MongoDB, etc.)
-- Implement authentication & authorization
-- Add middleware (CORS, logging, rate limiting)
-- Write tests
-- Add validation and error handling improvements
-- Implement pagination for list endpoints
+- Database setup and configuration
+- Working with models
+- Running migrations with Alembic
+- Query examples
