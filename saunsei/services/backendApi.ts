@@ -84,6 +84,17 @@ export interface SaunaCreateRequest {
   added_by_user_id: number
 }
 
+export interface DBSaunaSession {
+  id?: number
+  duration_seconds: number
+  average_temperature: number
+  max_temperature: number
+  user_id: number
+  sauna_id?: number
+  created_at?: string
+  updated_at?: string
+}
+
 export interface HarviaAuthResponse {
   success: boolean
   idToken: string
@@ -593,6 +604,59 @@ class BackendApiService {
    */
   async deleteSauna(saunaId: number): Promise<void> {
     await this.request(`${this.apiUrl}/saunas/${saunaId}`, {
+      method: "DELETE",
+    })
+  }
+
+  // ============================================
+  // SESSION MANAGEMENT
+  // ============================================
+
+  /**
+   * Get all sauna sessions from database
+   */
+  async getSessions(
+    skip: number = 0,
+    limit: number = 100,
+    userId?: number,
+    saunaId?: number
+  ): Promise<DBSaunaSession[]> {
+    let url = `${this.apiUrl}/sessions/?skip=${skip}&limit=${limit}`
+    if (userId) {
+      url += `&user_id=${userId}`
+    }
+    if (saunaId) {
+      url += `&sauna_id=${saunaId}`
+    }
+    console.log(`🌐 Fetching sessions from: ${url}`)
+    return this.request<DBSaunaSession[]>(url)
+  }
+
+  /**
+   * Get session by ID
+   */
+  async getSession(sessionId: number): Promise<DBSaunaSession> {
+    return this.request<DBSaunaSession>(`${this.apiUrl}/sessions/${sessionId}`)
+  }
+
+  /**
+   * Create new session
+   */
+  async createSession(
+    session: Omit<DBSaunaSession, "id" | "created_at" | "updated_at">
+  ): Promise<DBSaunaSession> {
+    return this.request<DBSaunaSession>(`${this.apiUrl}/sessions/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(session),
+    })
+  }
+
+  /**
+   * Delete session
+   */
+  async deleteSession(sessionId: number): Promise<void> {
+    await this.request(`${this.apiUrl}/sessions/${sessionId}`, {
       method: "DELETE",
     })
   }

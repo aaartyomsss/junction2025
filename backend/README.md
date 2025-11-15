@@ -19,9 +19,12 @@ uv sync
 docker-compose up -d
 
 # 3. Apply migrations when DB is running
+make db-upgrade
+
+# OR using alembic directly
 uv run python -m alembic upgrade head
 
-# 4. Run the API on the port expected by saunsei
+# 4. Generate sample data
 uv run python scripts/generate_saunas.py --count 20
 ```
 
@@ -135,3 +138,19 @@ The project uses PostgreSQL with SQLModel ORM. See [DATABASE.md](DATABASE.md) fo
 - Working with models
 - Running migrations with Alembic
 - Query examples
+
+### Quick Migration Commands
+
+```bash
+# Apply all pending migrations
+make db-upgrade
+
+# Create a new migration
+make migrate "add new feature"
+
+# Downgrade one migration
+make db-downgrade
+
+# Show migration history
+make migrate-history
+```

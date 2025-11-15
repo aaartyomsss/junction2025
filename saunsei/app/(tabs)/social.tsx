@@ -1,13 +1,81 @@
-import React from "react"
-import { ScrollView, StyleSheet, View, TouchableOpacity } from "react-native"
+import React, { useState, useEffect } from "react"
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { ThemedView } from "@/components/themed-view"
 import { ThemedText } from "@/components/themed-text"
 import { AppHeader } from "@/components/common/AppHeader"
 import { UpcomingSessionCard } from "@/components/feed/UpcomingSessionCard"
 import { FeedSessionCard } from "@/components/feed/FeedSessionCard"
+import {
+  backendApi,
+  DBSaunaSession,
+  DBUser,
+  DBSauna,
+} from "@/services/backendApi"
 
 export default function SocialScreen() {
+  const [sessions, setSessions] = useState<DBSaunaSession[]>([])
+  const [users, setUsers] = useState<Map<number, DBUser>>(new Map())
+  const [saunas, setSaunas] = useState<Map<number, DBSauna>>(new Map())
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+
+      // Fetch sessions, users, and saunas in parallel
+      const [sessionsData, usersData, saunasData] = await Promise.all([
+        backendApi.getSessions(0, 20),
+        backendApi.getDBUsers(0, 100),
+        backendApi.getSaunas(0, 100),
+      ])
+
+      // Create lookup maps
+      const usersMap = new Map(usersData.map((u) => [u.id!, u]))
+      const saunasMap = new Map(saunasData.map((s) => [s.id!, s]))
+
+      setSessions(sessionsData)
+      setUsers(usersMap)
+      setSaunas(saunasMap)
+    } catch (error) {
+      console.error("Failed to load feed data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  if (loading) {
+    return (
+      <ThemedView style={styles.container}>
+        <AppHeader />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#C9B59C" />
+        </View>
+      </ThemedView>
+    )
+  }
+
   return (
     <ThemedView style={styles.container}>
       <AppHeader />
@@ -63,70 +131,40 @@ export default function SocialScreen() {
         </View>
 
         <View style={styles.feedContainer}>
-          <FeedSessionCard
-            userName="Seppo Seppälä"
-            dateTime="2025-11-14 at 18:30"
-            saunaName="Sompasauna"
-            duration={45}
-            currentTemp={90}
-            avgTemp={85}
-            maxTemp={90}
-            calories={320}
-            kudos={12}
-            comments={3}
-          />
+          {sessions.length === 0 ? (
+            <View style={styles.emptyState}>
+              <ThemedText style={styles.emptyText}>No sessions yet</ThemedText>
+            </View>
+          ) : (
+            sessions.map((session) => {
+              const user = users.get(session.user_id)
+              const sauna = session.sauna_id
+                ? saunas.get(session.sauna_id)
+                : null
+              const durationMinutes = Math.round(session.duration_seconds / 60)
+              const calories = Math.round(durationMinutes * 6.5) // Rough estimate
 
-          <FeedSessionCard
-            userName="Alexander Tamm"
-            dateTime="2025-11-14 at 16:15"
-            saunaName="Alex's Home Sauna"
-            duration={60}
-            currentTemp={88}
-            avgTemp={83}
-            maxTemp={88}
-            calories={410}
-            kudos={24}
-            comments={5}
-          />
-
-          <FeedSessionCard
-            userName="Mariusz Polak"
-            dateTime="2025-11-13 at 20:00"
-            saunaName="Unisport sauna"
-            duration={30}
-            currentTemp={85}
-            avgTemp={80}
-            maxTemp={85}
-            calories={215}
-            kudos={18}
-            comments={2}
-          />
-
-          <FeedSessionCard
-            userName="Artjom Wickström"
-            dateTime="2025-11-13 at 14:45"
-            saunaName="Urban Heat Studio"
-            duration={50}
-            currentTemp={92}
-            avgTemp={88}
-            maxTemp={92}
-            calories={380}
-            kudos={31}
-            comments={7}
-          />
-
-          <FeedSessionCard
-            userName="Gabi Hämäläinen"
-            dateTime="2025-11-12 at 19:20"
-            saunaName="Harju Sauna"
-            duration={40}
-            currentTemp={89}
-            avgTemp={84}
-            maxTemp={89}
-            calories={295}
-            kudos={15}
-            comments={4}
-          />
+              return (
+                <FeedSessionCard
+                  key={session.id}
+                  userName={user?.full_name || user?.username || "Unknown User"}
+                  dateTime={
+                    session.created_at
+                      ? formatDateTime(session.created_at)
+                      : "Unknown"
+                  }
+                  saunaName={sauna?.name || "Unknown Location"}
+                  duration={durationMinutes}
+                  currentTemp={session.max_temperature}
+                  avgTemp={session.average_temperature}
+                  maxTemp={session.max_temperature}
+                  calories={calories}
+                  kudos={Math.floor(Math.random() * 30) + 5} // Mock for now
+                  comments={Math.floor(Math.random() * 10)} // Mock for now
+                />
+              )
+            })
+          )}
         </View>
 
         {/* Bottom padding for navigation */}
@@ -195,5 +233,19 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyState: {
+    paddingHorizontal: 24,
+    paddingVertical: 48,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#8A7F72",
   },
 })
