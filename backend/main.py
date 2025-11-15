@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from models import model_manager
 from routes import (
     decision_tree_router,
+    harvia_router,
     knn_router,
     random_forest_router,
     sauna_backend_router,
@@ -34,6 +35,9 @@ app.add_middleware(
 
 # Sauna backend (migrated from Go service)
 app.include_router(sauna_backend_router)
+
+# Harvia API integration
+app.include_router(harvia_router, prefix="/api")
 
 # ML/DB routes remain under /api for backwards compatibility
 app.include_router(knn_router, prefix="/api")

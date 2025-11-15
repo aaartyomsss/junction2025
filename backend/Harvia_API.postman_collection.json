@@ -1,0 +1,237 @@
+{
+  "info": {
+    "name": "Harvia API Integration",
+    "description": "Test collection for Harvia Cloud API integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api/harvia",
+      "type": "string"
+    },
+    {
+      "key": "id_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "1. Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Save tokens to collection variables",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('id_token', response.idToken);",
+                  "    pm.collectionVariables.set('refresh_token', response.refreshToken);",
+                  "    console.log('✅ Tokens saved! idToken:', response.idToken.substring(0, 50) + '...');",
+                  "} else {",
+                  "    console.log('❌ Login failed:', pm.response.json());",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"YOUR_PASSWORD_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticate with Harvia API using username and password.\n\n**IMPORTANT**: Replace YOUR_PASSWORD_HERE with your actual Harvia password.\n\nThe test script will automatically save the tokens to collection variables for use in subsequent requests."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\",\n  \"email\": \"{{username}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Refresh expired authentication tokens."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Devices",
+      "item": [
+        {
+          "name": "Get All Devices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{id_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/devices",
+              "host": ["{{base_url}}"],
+              "path": ["devices"]
+            },
+            "description": "Fetch all devices associated with the authenticated user's Harvia account.\n\n**Prerequisites**: You must run the \"Login\" request first to obtain a valid token."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Device State",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{id_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/devices/:device_id/state",
+              "host": ["{{base_url}}"],
+              "path": ["devices", ":device_id", "state"],
+              "variable": [
+                {
+                  "key": "device_id",
+                  "value": "YOUR_DEVICE_ID",
+                  "description": "Replace with actual device ID from Get All Devices response"
+                }
+              ]
+            },
+            "description": "Get the current state (shadow) of a specific device.\n\n**Note**: Replace :device_id with an actual device ID from the \"Get All Devices\" response."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Device Telemetry",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{id_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/devices/:device_id/telemetry",
+              "host": ["{{base_url}}"],
+              "path": ["devices", ":device_id", "telemetry"],
+              "variable": [
+                {
+                  "key": "device_id",
+                  "value": "YOUR_DEVICE_ID",
+                  "description": "Replace with actual device ID"
+                }
+              ]
+            },
+            "description": "Get the latest telemetry data for a specific device."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Device Target",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{id_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"YOUR_DEVICE_ID\",\n  \"temperature\": 85.0,\n  \"humidity\": 20.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/devices/target",
+              "host": ["{{base_url}}"],
+              "path": ["devices", "target"]
+            },
+            "description": "Set target temperature and/or humidity for a device.\n\n**Note**: Replace YOUR_DEVICE_ID with an actual device ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Device Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{id_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"YOUR_DEVICE_ID\",\n  \"command\": \"turn_on\",\n  \"parameters\": {\n    \"duration\": 3600\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/devices/command",
+              "host": ["{{base_url}}"],
+              "path": ["devices", "command"]
+            },
+            "description": "Send a command to a device.\n\n**Note**: Replace YOUR_DEVICE_ID with an actual device ID."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
+
