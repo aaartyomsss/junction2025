@@ -20,13 +20,6 @@ import { backendApi, HarviaAuthResponse } from '@/services/backendApi';
 import { DeviceStatus } from '@/types/sauna';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image } from 'expo-image';
-
-// Helper function to generate placeholder device image URL
-const getDeviceImageUrl = (deviceName: string, width: number = 200, height: number = 200) => {
-  const seed = deviceName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return `https://picsum.photos/seed/device${seed}/${width}/${height}`;
-}
 
 // Simple token storage (in production, use expo-secure-store)
 const TOKEN_KEY = 'harvia_token';
@@ -97,16 +90,6 @@ const DeviceCard: React.FC<DeviceCardProps> = ({ device, colors, isExpanded, onP
       }]}
       onPress={onPress}
       activeOpacity={0.7}>
-      {/* Device Image */}
-      <View style={styles.deviceImageContainer}>
-        <Image
-          source={{ uri: getDeviceImageUrl(device.deviceName) }}
-          style={styles.deviceImage}
-          placeholder={{ blurhash: "LKO2?U%2Tw=w]~RBVZRi};RPxuwH" }}
-          contentFit="cover"
-        />
-      </View>
-
       {/* Device Header */}
       <View style={styles.deviceHeader}>
         <View style={styles.deviceMainInfo}>
@@ -1031,28 +1014,17 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 14,
     borderWidth: 1,
-    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
-  deviceImageContainer: {
-    width: '100%',
-    height: 160,
-    overflow: 'hidden',
-  },
-  deviceImage: {
-    width: '100%',
-    height: '100%',
-  },
   deviceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     padding: 20,
-    paddingTop: 16,
     marginBottom: 0,
   },
   deviceMainInfo: {
