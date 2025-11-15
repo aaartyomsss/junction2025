@@ -6,7 +6,6 @@ import { AppHeader } from "@/components/AppHeader"
 import { MapHeader } from "@/components/MapHeader"
 import { SectionHeader } from "@/components/SectionHeader"
 import { SaunaCard } from "@/components/SaunaCard"
-import { BottomNavigation } from "@/components/BottomNavigation"
 import { backendApi, DBSauna } from "@/services/backendApi"
 
 export default function MapScreen() {
@@ -208,8 +207,6 @@ export default function MapScreen() {
           <ThemedView style={styles.bottomPadding} />
         </ScrollView>
       )}
-
-      <BottomNavigation />
     </ThemedView>
   )
 }
@@ -223,7 +220,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 100, // Space for bottom navigation
+    paddingBottom: 120, // Space for floating bottom navigation
   },
   section: {
     paddingHorizontal: 16,

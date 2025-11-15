@@ -50,11 +50,13 @@ async def login(auth_request: AuthRequest):
     The idToken should be included in the Authorization header for subsequent requests.
     Tokens expire after 1 hour and can be refreshed using the refresh endpoint.
     """
+    print(f"🔐 DEBUG: Login attempt for username: {auth_request.username}")
     try:
         tokens = await harvia_service.authenticate(
             auth_request.username,
             auth_request.password
         )
+        print(f"✅ DEBUG: Authentication successful")
         return AuthResponse(
             success=True,
             idToken=tokens["idToken"],
@@ -63,8 +65,10 @@ async def login(auth_request: AuthRequest):
             expiresIn=tokens["expiresIn"]
         )
     except HarviaAPIError as e:
+        print(f"❌ DEBUG: HarviaAPIError - Status: {e.status_code}, Message: {e.message}")
         return _handle_api_error(e)
     except Exception as e:
+        print(f"❌ DEBUG: Unexpected error: {type(e).__name__}: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={
@@ -127,6 +131,8 @@ async def get_devices(
         print(f"🔍 DEBUG: Attempting to fetch devices...")
         devices_data = await harvia_service.get_devices(token)
         print(f"✅ DEBUG: Received devices data: {type(devices_data)}")
+
+        print("devices_data", devices_data)
         
         # Parse devices data based on the actual API response structure
         # The actual structure may vary, so we handle different formats
@@ -145,33 +151,64 @@ async def get_devices(
         # Convert to our Device schema and enhance with parsed attributes
         for device_data in devices:
             try:
+                print(f"🔍 DEBUG: Raw device data: {device_data}")
+                
                 # Set id from name if not present
                 if "id" not in device_data and "name" in device_data:
                     device_data["id"] = device_data["name"]
                 
-                # Parse attr array to extract useful fields
+                # Handle displayName from GraphQL response (top-level field)
+                if "displayName" in device_data and device_data["displayName"]:
+                    print(f"✅ DEBUG: Found displayName at top level: {device_data['displayName']}")
+                
+                # Handle connection status from GraphQL (top-level field)
+                if "connected" in device_data:
+                    device_data["isConnected"] = device_data["connected"] if isinstance(device_data["connected"], bool) else device_data["connected"].lower() == "true"
+                
+                # Handle timestamps from GraphQL (top-level fields)
+                timestamp_fields = ["lastActivity", "lastConnectionTime", "lastSeen", "updatedAt", "createdAt"]
+                if not device_data.get("lastSeen"):
+                    for field in timestamp_fields:
+                        if field in device_data and device_data[field]:
+                            device_data["lastSeen"] = device_data[field]
+                            print(f"✅ DEBUG: Using {field} as lastSeen: {device_data[field]}")
+                            break
+                
+                # Parse attr array to extract useful fields (for REST API responses)
                 if "attr" in device_data and isinstance(device_data["attr"], list):
                     attrs = {item["key"]: item["value"] for item in device_data["attr"] if "key" in item and "value" in item}
+                    print(f"📋 DEBUG: Parsed attributes for {device_data.get('name')}: {attrs}")
                     
-                    # Extract connection status
-                    if "connected" in attrs:
+                    # Extract display name from attrs if not already set
+                    if not device_data.get("displayName"):
+                        # Try different name fields in priority order
+                        name_fields = ["displayName", "alias", "name", "serialNumber", "deviceName"]
+                        for field in name_fields:
+                            if field in attrs and attrs[field]:
+                                device_data["displayName"] = attrs[field]
+                                print(f"✅ DEBUG: Using {field} as displayName: {attrs[field]}")
+                                break
+                    
+                    # Extract connection status from attrs if not already set
+                    if "isConnected" not in device_data and "connected" in attrs:
                         device_data["isConnected"] = attrs["connected"].lower() == "true"
                     
-                    # Extract timestamps
-                    if "lastSeen" in attrs:
-                        device_data["lastSeen"] = attrs["lastSeen"]
-                    elif "createdAt" in attrs:
-                        device_data["lastSeen"] = attrs["createdAt"]
+                    # Extract timestamps from attrs if not already set
+                    if not device_data.get("lastSeen"):
+                        for field in timestamp_fields:
+                            if field in attrs and attrs[field]:
+                                device_data["lastSeen"] = attrs[field]
+                                break
                 
                 device = Device(**device_data)
                 devices_list.append(device)
-                print(f"✅ DEBUG: Parsed device: {device.name} (type: {device.type})")
             except Exception as e:
                 # If parsing fails, log but continue
                 print(f"⚠️ Warning: Could not parse device data: {e}")
+                print(f"   Raw data was: {device_data}")
                 continue
         
-        print(f"✅ DEBUG: Successfully parsed {len(devices_list)} devices")
+
         
         return DevicesResponse(
             success=True,

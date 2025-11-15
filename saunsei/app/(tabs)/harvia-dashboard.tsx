@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React from "react"
 import { ScrollView, StyleSheet, View } from "react-native"
 import { ThemedText } from "@/components/themed-text"
 import { ThemedView } from "@/components/themed-view"
@@ -8,10 +8,8 @@ import { GradientButton } from "@/components/GradientButton"
 import { SaunaTamagotchi } from "@/components/SaunaTamagotchi"
 import { StatCard } from "@/components/StatCard"
 import { SessionCard } from "@/components/SessionCard"
-import { BottomNavigation } from "@/components/BottomNavigation"
 
 export default function HarviaDashboardScreen() {
-  const [activeTab, setActiveTab] = useState("Home")
 
   return (
     <ThemedView style={styles.container}>
@@ -133,10 +131,8 @@ export default function HarviaDashboardScreen() {
           </View>
         </View>
 
-        <View style={{ height: 80 }} />
+        <View style={{ height: 20 }} />
       </ScrollView>
-
-      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </ThemedView>
   )
 }
@@ -150,7 +146,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   section: {
     marginHorizontal: 24,

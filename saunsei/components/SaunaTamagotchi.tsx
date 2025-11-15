@@ -1,5 +1,5 @@
-import React from "react"
-import { View, StyleSheet } from "react-native"
+import React, { useEffect, useRef } from "react"
+import { View, StyleSheet, Animated } from "react-native"
 import { ThemedText } from "@/components/themed-text"
 
 interface SaunaTamagotchiProps {
@@ -15,6 +15,49 @@ export function SaunaTamagotchi({
   status,
   accessories = ["🥋", "😎", "👑"],
 }: SaunaTamagotchiProps) {
+  // Animated pulsing effect for fire emoji
+  const pulseAnim = useRef(new Animated.Value(1)).current
+  const glowAnim = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    // Pulsing animation (reduced scale for mobile compatibility)
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start()
+
+    // Glow animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start()
+  }, [])
+
+  const glowColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(193, 119, 103, 0.13)", "rgba(255, 107, 53, 0.3)"],
+  })
+
   return (
     <View style={styles.container}>
       {/* Header with name and level */}
@@ -33,9 +76,16 @@ export function SaunaTamagotchi({
 
       {/* Character Display */}
       <View style={styles.characterContainer}>
-        <View style={styles.character}>
-          <ThemedText style={styles.emoji}>🔥</ThemedText>
-        </View>
+        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+          <Animated.View
+            style={[
+              styles.character,
+              { backgroundColor: glowColor },
+            ]}
+          >
+            <ThemedText style={styles.emoji}>🔥</ThemedText>
+          </Animated.View>
+        </Animated.View>
       </View>
 
       {/* Status Message */}
@@ -55,7 +105,7 @@ export function SaunaTamagotchi({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "linear-gradient(to bottom, #FFFFFF, #EFE9E3)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#D9CFC7",
@@ -104,18 +154,26 @@ const styles = StyleSheet.create({
   },
   characterContainer: {
     alignItems: "center",
-    marginVertical: 16,
+    marginVertical: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
   },
   character: {
-    width: 129,
-    height: 129,
+    width: 130,
+    height: 130,
     borderRadius: 65,
-    backgroundColor: "rgba(193, 119, 103, 0.13)",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#FF6B35",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 8,
   },
   emoji: {
-    fontSize: 20,
+    fontSize: 60,
+    lineHeight: 60,
+    textAlign: "center",
   },
   status: {
     fontSize: 16,

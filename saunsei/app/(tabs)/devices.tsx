@@ -1,20 +1,267 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, View, Text, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { 
+  ScrollView, 
+  StyleSheet, 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  RefreshControl, 
+  ActivityIndicator,
+  TextInput,
+  Modal,
+  Alert,
+  KeyboardAvoidingView,
+  Platform
+} from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
-import { backendApi } from '@/services/backendApi';
+import { backendApi, HarviaAuthResponse } from '@/services/backendApi';
 import { DeviceStatus } from '@/types/sauna';
 
+// Simple token storage (in production, use expo-secure-store)
+const TOKEN_KEY = 'harvia_token';
+const REFRESH_TOKEN_KEY = 'harvia_refresh_token';
+const EMAIL_KEY = 'harvia_email';
+
+const getStoredToken = async (): Promise<string | null> => {
+  try {
+    // Using localStorage for web, or AsyncStorage for native
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(TOKEN_KEY);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const setStoredToken = async (token: string, refreshToken: string, email: string) => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(TOKEN_KEY, token);
+      window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      window.localStorage.setItem(EMAIL_KEY, email);
+    }
+  } catch (error) {
+    console.error('Failed to store token:', error);
+  }
+};
+
+const clearStoredTokens = async () => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(TOKEN_KEY);
+      window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+      window.localStorage.removeItem(EMAIL_KEY);
+    }
+  } catch (error) {
+    console.error('Failed to clear tokens:', error);
+  }
+};
+
+// Device Card Component
+interface DeviceCardProps {
+  device: DeviceStatus;
+  colors: typeof Colors.light;
+  isExpanded: boolean;
+  onPress: () => void;
+  index: number;
+}
+
+const DeviceCard: React.FC<DeviceCardProps> = ({ device, colors, isExpanded, onPress, index }) => {
+  const getDeviceIcon = (type: string) => {
+    return type === 'fenix' ? '🎛️' : '📡';
+  };
+
+  const getStatusColor = (isConnected: boolean) => {
+    return isConnected ? '#4CAF50' : '#f44336';
+  };
+
+  const statusColor = getStatusColor(device.isConnected);
+
+  return (
+    <TouchableOpacity
+      style={[styles.deviceCard, { 
+        backgroundColor: colors.card,
+        borderColor: colors.border,
+      }]}
+      onPress={onPress}
+      activeOpacity={0.7}>
+      {/* Device Header */}
+      <View style={styles.deviceHeader}>
+        <View style={styles.deviceMainInfo}>
+          <View style={[styles.deviceIconWrapper, { 
+            backgroundColor: statusColor + '15' 
+          }]}>
+            <Text style={styles.deviceIcon}>
+              {getDeviceIcon(device.deviceType || 'smart_sensor')}
+            </Text>
+          </View>
+          <View style={styles.deviceTextInfo}>
+            <ThemedText type="defaultSemiBold" style={[styles.deviceName, { color: colors.text }]}>
+              {device.deviceName}
+            </ThemedText>
+            <View style={styles.deviceLocationRow}>
+              <Text style={styles.locationIcon}>📍</Text>
+              <ThemedText style={[styles.deviceLocation, { color: colors.textTertiary }]}>
+                {device.location?.name || 'Unknown Location'}
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+        <View style={[styles.deviceStatusBadge, { backgroundColor: statusColor + '15' }]}>
+          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          <ThemedText style={[styles.deviceStatusText, { color: statusColor }]}>
+            {device.isConnected ? 'Online' : 'Offline'}
+          </ThemedText>
+        </View>
+      </View>
+
+      {/* Device Metrics */}
+      <View style={styles.deviceMetrics}>
+        <View style={[styles.metricItem, { backgroundColor: statusColor + '10' }]}>
+          <Text style={styles.metricIcon}>⚡</Text>
+          <View style={styles.metricContent}>
+            <ThemedText style={[styles.metricValue, { color: colors.text }]}>
+              {device.isConnected ? 'Active' : 'Inactive'}
+            </ThemedText>
+            <ThemedText style={[styles.metricLabel, { color: colors.textTertiary }]}>
+              Status
+            </ThemedText>
+          </View>
+        </View>
+        
+        <View style={[styles.metricItem, { backgroundColor: colors.border + '40' }]}>
+          <Text style={styles.metricIcon}>🔧</Text>
+          <View style={styles.metricContent}>
+            <ThemedText style={[styles.metricValue, { color: colors.text }]}>
+              {device.deviceType || 'N/A'}
+            </ThemedText>
+            <ThemedText style={[styles.metricLabel, { color: colors.textTertiary }]}>
+              Type
+            </ThemedText>
+          </View>
+        </View>
+        
+        <View style={[styles.metricItem, { backgroundColor: colors.border + '40' }]}>
+          <Text style={styles.metricIcon}>🕐</Text>
+          <View style={styles.metricContent}>
+            <ThemedText style={[styles.metricValue, { color: colors.text }]}>
+              {device.isConnected 
+                ? 'Now'
+                : device.lastSeen 
+                  ? (() => {
+                      const lastSeenDate = new Date(device.lastSeen);
+                      const now = new Date();
+                      const diffMs = now.getTime() - lastSeenDate.getTime();
+                      const diffMins = Math.floor(diffMs / 60000);
+                      const diffHours = Math.floor(diffMins / 60);
+                      const diffDays = Math.floor(diffHours / 24);
+                      
+                      if (diffMins < 1) return 'Just now';
+                      if (diffMins < 60) return `${diffMins}m ago`;
+                      if (diffHours < 24) return `${diffHours}h ago`;
+                      if (diffDays < 7) return `${diffDays}d ago`;
+                      return lastSeenDate.toLocaleDateString();
+                    })()
+                  : 'Unknown'}
+            </ThemedText>
+            <ThemedText style={[styles.metricLabel, { color: colors.textTertiary }]}>
+              Last Seen
+            </ThemedText>
+          </View>
+        </View>
+      </View>
+
+      {/* Expanded Details */}
+      {isExpanded && (
+        <View style={styles.expandedDetails}>
+          <View style={[styles.detailDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.detailGrid}>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Device ID
+              </ThemedText>
+              <ThemedText 
+                type="defaultSemiBold" 
+                style={[styles.detailValue, { color: colors.text }]}
+                numberOfLines={1}
+                ellipsizeMode="middle">
+                {device.deviceId}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Device Name
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.deviceName}
+              </ThemedText>
+            </View>
+            <View style={styles.detailItem}>
+              <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                Type
+              </ThemedText>
+              <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                {device.deviceType || 'Unknown'}
+              </ThemedText>
+            </View>
+            {device.location && device.location.latitude && device.location.longitude && (
+              <>
+                <View style={styles.detailItem}>
+                  <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                    Latitude
+                  </ThemedText>
+                  <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                    {device.location.latitude.toFixed(4)}
+                  </ThemedText>
+                </View>
+                <View style={styles.detailItem}>
+                  <ThemedText style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                    Longitude
+                  </ThemedText>
+                  <ThemedText type="defaultSemiBold" style={[styles.detailValue, { color: colors.text }]}>
+                    {device.location.longitude.toFixed(4)}
+                  </ThemedText>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
+
 export default function DevicesScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  // Force light theme to match other pages
+  const colors = Colors.light;
   const [devices, setDevices] = useState<DeviceStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline' | 'checking'>('checking');
+  
+  // Harvia authentication state
+  const [harviaToken, setHarviaToken] = useState<string | null>(null);
+  const [useHarvia, setUseHarvia] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
+
+  // Load stored token on mount
+  useEffect(() => {
+    const loadToken = async () => {
+      const token = await getStoredToken();
+      if (token) {
+        setHarviaToken(token);
+        setUseHarvia(true);
+      }
+    };
+    loadToken();
+  }, []);
 
   const fetchDevices = async () => {
     try {
@@ -27,7 +274,28 @@ export default function DevicesScreen() {
         return;
       }
 
-      const devicesData = await backendApi.getDevices();
+      let devicesData: DeviceStatus[] = [];
+
+      if (useHarvia && harviaToken) {
+        // Try to fetch real Harvia devices
+        try {
+          devicesData = await backendApi.getHarviaDevices(harviaToken);
+          if (devicesData.length === 0) {
+            // If no devices returned, token might be expired - try refresh
+            console.log('No devices returned, token may be expired');
+            // Fall back to mock devices for now
+            devicesData = await backendApi.getDevices();
+          }
+        } catch (error) {
+          console.error('Failed to fetch Harvia devices:', error);
+          // Fall back to mock devices
+          devicesData = await backendApi.getDevices();
+        }
+      } else {
+        // Fetch mock devices
+        devicesData = await backendApi.getDevices();
+      }
+
       setDevices(devicesData);
     } catch (error) {
       console.error('Failed to fetch devices:', error);
@@ -40,20 +308,66 @@ export default function DevicesScreen() {
 
   useEffect(() => {
     fetchDevices();
-  }, []);
+  }, [useHarvia, harviaToken]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchDevices();
   };
 
-  const getDeviceIcon = (type: string) => {
-    return type === 'fenix' ? '🎛️' : '📡';
+  const handleHarviaLogin = async () => {
+    if (!loginEmail || !loginPassword) {
+      Alert.alert('Error', 'Please enter both email and password');
+      return;
+    }
+
+    setLoggingIn(true);
+    try {
+      const authResponse = await backendApi.harviaLogin(loginEmail, loginPassword);
+      
+      if (authResponse && authResponse.success) {
+        await setStoredToken(
+          authResponse.idToken,
+          authResponse.refreshToken || '',
+          loginEmail
+        );
+        setHarviaToken(authResponse.idToken);
+        setUseHarvia(true);
+        setShowLoginModal(false);
+        setLoginEmail('');
+        setLoginPassword('');
+        Alert.alert('Success', 'Connected to Harvia!');
+        fetchDevices();
+      } else {
+        Alert.alert('Error', 'Login failed. Please check your credentials.');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      Alert.alert('Error', 'Failed to connect to Harvia. Please try again.');
+    } finally {
+      setLoggingIn(false);
+    }
   };
 
-  const getStatusColor = (isConnected: boolean) => {
-    return isConnected ? '#4CAF50' : '#f44336';
+  const handleLogout = async () => {
+    await clearStoredTokens();
+    setHarviaToken(null);
+    setUseHarvia(false);
+    fetchDevices();
+    Alert.alert('Logged Out', 'Disconnected from Harvia');
   };
+
+  const connectedDevices = devices.filter(d => d.isConnected).length;
+  const offlineDevices = devices.filter(d => !d.isConnected).length;
+  
+  // Count unique device types
+  const deviceTypes = devices.reduce((acc, d) => {
+    const type = d.deviceType || 'unknown';
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  const totalTypes = Object.keys(deviceTypes).length;
 
   if (loading) {
     return (
@@ -72,26 +386,14 @@ export default function DevicesScreen() {
         <View style={styles.errorContainer}>
           <Text style={styles.errorIcon}>⚠️</Text>
           <ThemedText type="title" style={styles.errorTitle}>Backend Offline</ThemedText>
-          <ThemedText style={[styles.errorText, { color: colors.icon }]}>
+          <ThemedText style={[styles.errorText, { color: colors.textTertiary }]}>
             Unable to connect to the backend API
-          </ThemedText>
-          <ThemedText style={[styles.errorSubtext, { color: colors.icon }]}>
-            Make sure the Go server is running on http://localhost:8080
           </ThemedText>
           <TouchableOpacity 
             style={[styles.retryButton, { backgroundColor: colors.tint }]}
             onPress={fetchDevices}>
             <ThemedText style={styles.retryButtonText}>Retry Connection</ThemedText>
           </TouchableOpacity>
-          <View style={styles.instructionsBox}>
-            <ThemedText type="defaultSemiBold" style={styles.instructionsTitle}>
-              Start the backend:
-            </ThemedText>
-            <View style={styles.codeBox}>
-              <ThemedText style={styles.codeText}>cd backend</ThemedText>
-              <ThemedText style={styles.codeText}>go run main.go</ThemedText>
-            </View>
-          </View>
         </View>
       </ThemedView>
     );
@@ -100,129 +402,268 @@ export default function DevicesScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView 
-        style={styles.scrollView} 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.tint} />
         }>
-        {/* Header */}
+        {/* Header Section */}
         <View style={styles.header}>
-          <View>
-            <ThemedText type="title">Sauna Devices 🔥</ThemedText>
-            <ThemedText style={[styles.subtitle, { color: colors.icon }]}>
-              {devices.length} device{devices.length !== 1 ? 's' : ''} available
-            </ThemedText>
+          <View style={styles.headerContent}>
+            <View style={styles.headerText}>
+              <ThemedText type="title" style={[styles.title, { color: colors.text }]}>
+                Devices
+              </ThemedText>
+              <ThemedText style={[styles.subtitle, { color: colors.textTertiary }]}>
+                {devices.length} device{devices.length !== 1 ? 's' : ''} • {connectedDevices} online
+              </ThemedText>
+            </View>
+            <View style={[styles.statusIndicator, { 
+              backgroundColor: backendStatus === 'online' ? '#4CAF5015' : '#f4433615',
+            }]}>
+              <View style={[styles.statusDot, { 
+                backgroundColor: backendStatus === 'online' ? '#4CAF50' : '#f44336' 
+              }]} />
+              <ThemedText style={[styles.statusText, { 
+                color: backendStatus === 'online' ? '#4CAF50' : '#f44336' 
+              }]}>
+                {backendStatus === 'online' ? 'Online' : 'Offline'}
+              </ThemedText>
+            </View>
           </View>
-          <View style={[styles.backendBadge, { backgroundColor: '#4CAF5020', borderColor: '#4CAF50' }]}>
-            <View style={[styles.statusDot, { backgroundColor: '#4CAF50' }]} />
-            <ThemedText style={styles.backendText}>Backend Online</ThemedText>
+
+          {/* Harvia Connection */}
+          <View style={styles.harviaSection}>
+            {useHarvia ? (
+              <TouchableOpacity 
+                style={[styles.harviaConnectedCard, { backgroundColor: colors.card }]}
+                onPress={handleLogout}
+                activeOpacity={0.7}>
+                <View style={styles.harviaConnectedContent}>
+                  <View style={styles.harviaConnectedLeft}>
+                    <View style={styles.harviaCheckmark}>
+                      <Text style={styles.harviaCheckmarkText}>✓</Text>
+                    </View>
+                    <View>
+                      <ThemedText style={[styles.harviaConnectedTitle, { color: colors.text }]}>
+                        Connected to Harvia
+                      </ThemedText>
+                      <ThemedText style={[styles.harviaConnectedSubtitle, { color: colors.textTertiary }]}>
+                        Live device data enabled
+                      </ThemedText>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    onPress={handleLogout}
+                    style={styles.disconnectButton}>
+                    <ThemedText style={styles.disconnectText}>Disconnect</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={[styles.harviaConnectCard, { 
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                }]}
+                onPress={() => setShowLoginModal(true)}
+                activeOpacity={0.7}>
+                <View style={styles.harviaConnectContent}>
+                  <Text style={styles.harviaIcon}>🔗</Text>
+                  <View style={styles.harviaConnectText}>
+                    <ThemedText style={[styles.harviaConnectTitle, { color: colors.text }]}>
+                      Connect to Harvia
+                    </ThemedText>
+                    <ThemedText style={[styles.harviaConnectSubtitle, { color: colors.textTertiary }]}>
+                      Access your real devices
+                    </ThemedText>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
-        {/* Device Count by Type */}
-        <View style={styles.typeStats}>
-          <View style={[styles.typeCard, { backgroundColor: colors.background }]}>
-            <Text style={styles.typeIcon}>📡</Text>
-            <ThemedText type="title" style={styles.typeCount}>
-              {devices.filter(d => d.deviceType === 'smart_sensor').length}
-            </ThemedText>
-            <ThemedText style={[styles.typeLabel, { color: colors.icon }]}>
-              Smart Sensors
-            </ThemedText>
+        {/* Stats Overview */}
+        {devices.length > 0 && (
+          <View style={styles.statsContainer}>
+            <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.statIconWrapper, { backgroundColor: '#66BB6A15' }]}>
+                <Text style={styles.statEmoji}>✓</Text>
+              </View>
+              <ThemedText type="title" style={[styles.statNumber, { color: colors.text }]}>
+                {connectedDevices}
+              </ThemedText>
+              <ThemedText style={[styles.statLabel, { color: colors.textTertiary }]}>
+                Online
+              </ThemedText>
+            </View>
+            
+            <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.statIconWrapper, { backgroundColor: '#f4433615' }]}>
+                <Text style={styles.statEmoji}>○</Text>
+              </View>
+              <ThemedText type="title" style={[styles.statNumber, { color: colors.text }]}>
+                {offlineDevices}
+              </ThemedText>
+              <ThemedText style={[styles.statLabel, { color: colors.textTertiary }]}>
+                Offline
+              </ThemedText>
+            </View>
+
+            <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.statIconWrapper, { backgroundColor: '#4ECDC415' }]}>
+                <Text style={styles.statEmoji}>🔧</Text>
+              </View>
+              <ThemedText type="title" style={[styles.statNumber, { color: colors.text }]}>
+                {totalTypes}
+              </ThemedText>
+              <ThemedText style={[styles.statLabel, { color: colors.textTertiary }]}>
+                Device Types
+              </ThemedText>
+            </View>
           </View>
-          <View style={[styles.typeCard, { backgroundColor: colors.background }]}>
-            <Text style={styles.typeIcon}>🎛️</Text>
-            <ThemedText type="title" style={styles.typeCount}>
-              {devices.filter(d => d.deviceType === 'fenix').length}
-            </ThemedText>
-            <ThemedText style={[styles.typeLabel, { color: colors.icon }]}>
-              Fenix Panels
-            </ThemedText>
-          </View>
-        </View>
+        )}
 
         {/* Device List */}
         <View style={styles.devicesSection}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>All Devices</ThemedText>
+          <View style={styles.sectionHeader}>
+            <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
+              All Devices
+            </ThemedText>
+            {devices.length > 0 && (
+              <ThemedText style={[styles.sectionCount, { color: colors.textTertiary }]}>
+                {devices.length}
+              </ThemedText>
+            )}
+          </View>
           
-          {devices.map((device) => (
-            <TouchableOpacity
-              key={device.deviceId}
-              style={[styles.deviceCard, { backgroundColor: colors.background }]}
-              onPress={() => setSelectedDevice(
-                selectedDevice === device.deviceId ? null : device.deviceId
-              )}>
-              {/* Device Header */}
-              <View style={styles.deviceHeader}>
-                <View style={styles.deviceInfo}>
-                  <Text style={styles.deviceIcon}>{getDeviceIcon(device.deviceType || 'smart_sensor')}</Text>
-                  <View style={styles.deviceDetails}>
-                    <ThemedText type="defaultSemiBold" style={styles.deviceName}>
-                      {device.deviceName}
-                    </ThemedText>
-                    <ThemedText style={[styles.deviceLocation, { color: colors.icon }]}>
-                      📍 {device.location?.name || 'Unknown Location'}
-                    </ThemedText>
-                  </View>
-                </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusColor(device.isConnected) + '20' }
-                  ]}>
-                  <View style={[styles.statusDot, { backgroundColor: getStatusColor(device.isConnected) }]} />
-                  <ThemedText style={[styles.statusText, { color: getStatusColor(device.isConnected) }]}>
-                    {device.isConnected ? 'Online' : 'Offline'}
-                  </ThemedText>
-                </View>
+          {devices.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconContainer}>
+                <Text style={styles.emptyIcon}>📡</Text>
               </View>
-
-              {/* Device Stats */}
-              <View style={styles.deviceStats}>
-                <View style={styles.statBadge}>
-                  <Text style={styles.statIcon}>🔋</Text>
-                  <ThemedText style={styles.statText}>{device.batteryLevel}%</ThemedText>
-                </View>
-                <View style={styles.statBadge}>
-                  <Text style={styles.statIcon}>📶</Text>
-                  <ThemedText style={styles.statText}>{device.signalStrength}%</ThemedText>
-                </View>
-                <View style={styles.statBadge}>
-                  <Text style={styles.statIcon}>🕐</Text>
-                  <ThemedText style={styles.statText}>
-                    {device.lastSeen ? new Date(device.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
-                  </ThemedText>
-                </View>
-              </View>
-
-              {/* Expanded Details */}
-              {selectedDevice === device.deviceId && (
-                <View style={styles.expandedSection}>
-                  <View style={styles.divider} />
-                  <View style={styles.detailRow}>
-                    <ThemedText style={{ color: colors.icon }}>Device ID:</ThemedText>
-                    <ThemedText type="defaultSemiBold">{device.deviceId}</ThemedText>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <ThemedText style={{ color: colors.icon }}>Type:</ThemedText>
-                    <ThemedText type="defaultSemiBold">{device.deviceType}</ThemedText>
-                  </View>
-                  {device.location && (
-                    <View style={styles.detailRow}>
-                      <ThemedText style={{ color: colors.icon }}>Coordinates:</ThemedText>
-                      <ThemedText type="defaultSemiBold">
-                        {device.location.latitude.toFixed(4)}, {device.location.longitude.toFixed(4)}
-                      </ThemedText>
-                    </View>
-                  )}
-                </View>
+              <ThemedText type="subtitle" style={[styles.emptyTitle, { color: colors.text }]}>
+                No devices found
+              </ThemedText>
+              <ThemedText style={[styles.emptyText, { color: colors.textTertiary }]}>
+                {useHarvia 
+                  ? 'No devices are currently available'
+                  : 'Connect to Harvia to see your devices'}
+              </ThemedText>
+              {!useHarvia && (
+                <TouchableOpacity 
+                  style={[styles.emptyActionButton, { backgroundColor: colors.tint }]}
+                  onPress={() => setShowLoginModal(true)}>
+                  <ThemedText style={styles.emptyActionText}>Connect Now</ThemedText>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-          ))}
+            </View>
+          ) : (
+            devices.map((device, index) => (
+              <DeviceCard
+                key={device.deviceId}
+                device={device}
+                colors={colors}
+                isExpanded={selectedDevice === device.deviceId}
+                onPress={() => setSelectedDevice(
+                  selectedDevice === device.deviceId ? null : device.deviceId
+                )}
+                index={index}
+              />
+            ))
+          )}
         </View>
 
-        <View style={{ height: 24 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Harvia Login Modal */}
+      <Modal
+        visible={showLoginModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLoginModal(false)}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowLoginModal(false)}
+          />
+          <View style={styles.modalContentWrapper}>
+            <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+              <View style={styles.modalHeader}>
+                <View>
+                  <ThemedText type="title" style={[styles.modalTitle, { color: colors.text }]}>
+                    Connect to Harvia
+                  </ThemedText>
+                  <ThemedText style={[styles.modalSubtitle, { color: colors.textTertiary }]}>
+                    Sign in to access your devices
+                  </ThemedText>
+                </View>
+                <TouchableOpacity 
+                  onPress={() => setShowLoginModal(false)}
+                  style={styles.modalCloseButton}>
+                  <Text style={[styles.modalClose, { color: colors.textTertiary }]}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modalBody}>
+                <View style={styles.inputContainer}>
+                  <ThemedText style={[styles.inputLabel, { color: colors.text }]}>Email</ThemedText>
+                  <TextInput
+                    style={[styles.input, { 
+                      borderColor: colors.border,
+                      backgroundColor: colors.background,
+                      color: colors.text
+                    }]}
+                    placeholder="your@email.com"
+                    placeholderTextColor={colors.textTertiary + '80'}
+                    value={loginEmail}
+                    onChangeText={setLoginEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoComplete="email"
+                  />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <ThemedText style={[styles.inputLabel, { color: colors.text }]}>Password</ThemedText>
+                  <TextInput
+                    style={[styles.input, { 
+                      borderColor: colors.border,
+                      backgroundColor: colors.background,
+                      color: colors.text
+                    }]}
+                    placeholder="Enter your password"
+                    placeholderTextColor={colors.textTertiary + '80'}
+                    value={loginPassword}
+                    onChangeText={setLoginPassword}
+                    secureTextEntry
+                    autoComplete="password"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.loginButton, { backgroundColor: colors.tint }]}
+                  onPress={handleHarviaLogin}
+                  disabled={loggingIn}
+                  activeOpacity={0.8}>
+                  {loggingIn ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <ThemedText style={styles.loginButtonText}>Connect</ThemedText>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ThemedView>
   );
 }
@@ -230,9 +671,13 @@ export default function DevicesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.light.background,
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
@@ -260,151 +705,50 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 8,
-  },
-  errorSubtext: {
-    fontSize: 14,
-    textAlign: 'center',
     marginBottom: 24,
   },
   retryButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
-    marginBottom: 32,
   },
   retryButtonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  instructionsBox: {
-    backgroundColor: 'rgba(78, 205, 196, 0.1)',
-    padding: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(78, 205, 196, 0.3)',
-    width: '100%',
-  },
-  instructionsTitle: {
-    marginBottom: 12,
-  },
-  codeBox: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    padding: 12,
-    borderRadius: 8,
-    gap: 4,
-  },
-  codeText: {
-    fontFamily: 'monospace',
-    fontSize: 13,
-    color: '#4ECDC4',
-  },
+  // Header Styles
   header: {
-    padding: 20,
+    paddingHorizontal: 20,
     paddingTop: 60,
+    paddingBottom: 20,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  headerText: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
-    marginTop: 4,
+    fontSize: 15,
+    fontWeight: '500',
   },
-  backendBadge: {
+  statusIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  backendText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4CAF50',
-  },
-  typeStats: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  typeCard: {
-    flex: 1,
-    padding: 20,
-    borderRadius: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  typeIcon: {
-    fontSize: 40,
-    marginBottom: 8,
-  },
-  typeCount: {
-    marginBottom: 4,
-  },
-  typeLabel: {
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  devicesSection: {
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    marginBottom: 16,
-  },
-  deviceCard: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  deviceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  deviceInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  deviceIcon: {
-    fontSize: 32,
-  },
-  deviceDetails: {
-    flex: 1,
-  },
-  deviceName: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  deviceLocation: {
-    fontSize: 12,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   statusDot: {
     width: 8,
@@ -415,43 +759,393 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  deviceStats: {
-    flexDirection: 'row',
-    gap: 12,
+  // Harvia Section
+  harviaSection: {
+    marginTop: 4,
   },
-  statBadge: {
-    flex: 1,
+  harviaConnectCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  harviaConnectContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    padding: 8,
-    backgroundColor: 'rgba(78, 205, 196, 0.08)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(78, 205, 196, 0.2)',
+    gap: 12,
   },
-  statIcon: {
-    fontSize: 14,
+  harviaIcon: {
+    fontSize: 24,
   },
-  statText: {
-    fontSize: 12,
+  harviaConnectText: {
+    flex: 1,
+  },
+  harviaConnectTitle: {
+    fontSize: 16,
     fontWeight: '600',
+    marginBottom: 2,
   },
-  expandedSection: {
-    marginTop: 12,
-    gap: 8,
+  harviaConnectSubtitle: {
+    fontSize: 13,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#CCCCCC30',
-    marginBottom: 8,
+  chevron: {
+    fontSize: 24,
+    color: '#C9B59C',
   },
-  detailRow: {
+  harviaConnectedCard: {
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  harviaConnectedContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  harviaConnectedLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  harviaCheckmark: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  harviaCheckmarkText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  harviaConnectedTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  harviaConnectedSubtitle: {
+    fontSize: 13,
+  },
+  disconnectButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  disconnectText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#f44336',
+  },
+  // Stats Section
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+    marginBottom: 28,
+  },
+  statCard: {
+    flex: 1,
+    padding: 18,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  statEmoji: {
+    fontSize: 22,
+  },
+  statNumber: {
+    fontSize: 26,
+    fontWeight: '700',
+    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 12,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  // Devices Section
+  devicesSection: {
+    paddingHorizontal: 20,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  sectionCount: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F0EDE8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyIcon: {
+    fontSize: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  emptyActionButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  emptyActionText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  // Device Card
+  deviceCard: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  deviceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  deviceMainInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  deviceIconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deviceIcon: {
+    fontSize: 26,
+  },
+  deviceTextInfo: {
+    flex: 1,
+  },
+  deviceName: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 6,
+    letterSpacing: -0.2,
+  },
+  deviceLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  locationIcon: {
+    fontSize: 12,
+  },
+  deviceLocation: {
+    fontSize: 13,
+    fontWeight: '400',
+  },
+  deviceStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  deviceStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // Device Metrics
+  deviceMetrics: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  metricItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+  },
+  metricIcon: {
+    fontSize: 18,
+  },
+  metricContent: {
+    flex: 1,
+  },
+  metricValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  metricLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  // Expanded Details
+  expandedDetails: {
+    marginTop: 16,
+    paddingTop: 16,
+  },
+  detailDivider: {
+    height: 1,
+    marginBottom: 16,
+  },
+  detailGrid: {
+    gap: 12,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  detailLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  detailValue: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContentWrapper: {
+    width: '100%',
+    maxWidth: 500,
+  },
+  modalContent: {
+    borderRadius: 24,
+    padding: 24,
+    paddingBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalClose: {
+    fontSize: 24,
+    fontWeight: '300',
+  },
+  modalBody: {
+    gap: 20,
+  },
+  inputContainer: {
+    gap: 10,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+  },
+  loginButton: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#C9B59C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  loginButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

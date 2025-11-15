@@ -135,6 +135,7 @@ class Device(BaseModel):
     
     # Computed/optional fields for compatibility
     id: Optional[str] = None
+    displayName: Optional[str] = None  # User-friendly display name
     isConnected: Optional[bool] = None
     batteryLevel: Optional[float] = None
     signalStrength: Optional[float] = None

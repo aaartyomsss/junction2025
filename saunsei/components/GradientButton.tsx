@@ -1,10 +1,11 @@
-import React from "react"
+import React, { useState } from "react"
 import {
   TouchableOpacity,
   StyleSheet,
   StyleProp,
   ViewStyle,
   View,
+  Animated,
 } from "react-native"
 import { ThemedText } from "@/components/themed-text"
 
@@ -21,16 +22,39 @@ export function GradientButton({
   onPress,
   style,
 }: GradientButtonProps) {
+  const [scaleValue] = useState(new Animated.Value(1))
+
+  const handlePressIn = () => {
+    Animated.spring(scaleValue, {
+      toValue: 0.97,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handlePressOut = () => {
+    Animated.spring(scaleValue, {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start()
+  }
+
   return (
     <TouchableOpacity
-      style={[styles.container, style]}
       onPress={onPress}
-      activeOpacity={0.8}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
     >
-      <View style={styles.content}>
-        {icon && <ThemedText style={styles.icon}>{icon}</ThemedText>}
-        <ThemedText style={styles.title}>{title}</ThemedText>
-      </View>
+      <Animated.View
+        style={[styles.container, style, { transform: [{ scale: scaleValue }] }]}
+      >
+        <View style={styles.content}>
+          {icon && <ThemedText style={styles.icon}>{icon}</ThemedText>}
+          <ThemedText style={styles.title}>{title}</ThemedText>
+        </View>
+      </Animated.View>
     </TouchableOpacity>
   )
 }
@@ -41,11 +65,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowColor: "#C9B59C",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   content: {
     flexDirection: "row",

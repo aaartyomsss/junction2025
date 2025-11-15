@@ -1,5 +1,5 @@
-import React from "react"
-import { View, StyleSheet, StyleProp, ViewStyle } from "react-native"
+import React, { useState } from "react"
+import { View, StyleSheet, StyleProp, ViewStyle, Animated, TouchableOpacity } from "react-native"
 import { ThemedText } from "@/components/themed-text"
 
 interface StatCardProps {
@@ -19,42 +19,67 @@ export function StatCard({
   highlighted = false,
   style,
 }: StatCardProps) {
+  const [scaleValue] = useState(new Animated.Value(1))
+
+  const handlePressIn = () => {
+    Animated.spring(scaleValue, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handlePressOut = () => {
+    Animated.spring(scaleValue, {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start()
+  }
+
   return (
-    <View
-      style={[
-        styles.container,
-        highlighted ? styles.highlighted : styles.normal,
-        style,
-      ]}
+    <TouchableOpacity
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
+      style={style}
     >
-      <View style={styles.header}>
-        <ThemedText style={styles.icon}>{icon}</ThemedText>
+      <Animated.View
+        style={[
+          styles.container,
+          highlighted ? styles.highlighted : styles.normal,
+          { transform: [{ scale: scaleValue }] },
+        ]}
+      >
+        <View style={styles.header}>
+          <ThemedText style={styles.icon}>{icon}</ThemedText>
+          <ThemedText
+            style={[
+              styles.label,
+              highlighted ? styles.labelHighlighted : styles.labelNormal,
+            ]}
+          >
+            {label}
+          </ThemedText>
+        </View>
         <ThemedText
           style={[
-            styles.label,
-            highlighted ? styles.labelHighlighted : styles.labelNormal,
+            styles.value,
+            highlighted ? styles.valueHighlighted : styles.valueNormal,
           ]}
         >
-          {label}
+          {value}
         </ThemedText>
-      </View>
-      <ThemedText
-        style={[
-          styles.value,
-          highlighted ? styles.valueHighlighted : styles.valueNormal,
-        ]}
-      >
-        {value}
-      </ThemedText>
-      <ThemedText
-        style={[
-          styles.unit,
-          highlighted ? styles.unitHighlighted : styles.unitNormal,
-        ]}
-      >
-        {unit}
-      </ThemedText>
-    </View>
+        <ThemedText
+          style={[
+            styles.unit,
+            highlighted ? styles.unitHighlighted : styles.unitNormal,
+          ]}
+        >
+          {unit}
+        </ThemedText>
+      </Animated.View>
+    </TouchableOpacity>
   )
 }
 
@@ -71,6 +96,11 @@ const styles = StyleSheet.create({
   },
   highlighted: {
     backgroundColor: "#C9B59C",
+    shadowColor: "#C9B59C",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
   },
   normal: {
     backgroundColor: "#FFFFFF",
