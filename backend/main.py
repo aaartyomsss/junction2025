@@ -10,6 +10,7 @@ from routes import (
     knn_router,
     random_forest_router,
     sauna_backend_router,
+    saunas_router,
     svm_router,
     users_router,
 )
@@ -45,6 +46,7 @@ app.include_router(svm_router, prefix="/api")
 app.include_router(decision_tree_router, prefix="/api")
 app.include_router(random_forest_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+app.include_router(saunas_router, prefix="/api")
 
 
 @app.on_event("startup")
