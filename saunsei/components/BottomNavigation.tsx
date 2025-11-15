@@ -1,41 +1,55 @@
 import React from "react"
 import { View, StyleSheet, TouchableOpacity } from "react-native"
+import { useRouter, usePathname } from "expo-router"
 import { ThemedText } from "@/components/themed-text"
-
-interface NavItem {
-  icon: string
-  label: string
-  isActive?: boolean
-  onPress?: () => void
-}
 
 interface BottomNavigationProps {
   activeTab?: string
   onTabChange?: (tab: string) => void
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { icon: "🏠", label: "Home" },
-  { icon: "📍", label: "Map" },
-  { icon: "📱", label: "Feed" },
-  { icon: "🏆", label: "Rankings" },
-  { icon: "❤️", label: "Health" },
+const NAV_ITEMS = [
+  { icon: "🏠", label: "Home", route: "/(tabs)" as const },
+  { icon: "📍", label: "Map", route: "/(tabs)/trips" as const },
+  { icon: "📱", label: "Feed", route: "/(tabs)/social" as const },
+  { icon: "🏆", label: "Rankings", route: "/(tabs)/devices" as const },
+  { icon: "❤️", label: "Health", route: "/(tabs)/devices" as const },
 ]
 
 export function BottomNavigation({
-  activeTab = "Home",
+  activeTab,
   onTabChange,
 }: BottomNavigationProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const handleTabPress = (item: (typeof NAV_ITEMS)[number]) => {
+    if (onTabChange) {
+      onTabChange(item.label)
+    } else {
+      router.push(item.route)
+    }
+  }
+
+  const isTabActive = (item: (typeof NAV_ITEMS)[number]) => {
+    if (activeTab) {
+      return item.label === activeTab
+    }
+    return (
+      pathname === item.route || (pathname === "/" && item.route === "/(tabs)")
+    )
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.navBar}>
         {NAV_ITEMS.map((item) => {
-          const isActive = item.label === activeTab
+          const isActive = isTabActive(item)
           return (
             <TouchableOpacity
               key={item.label}
               style={styles.navItem}
-              onPress={() => onTabChange?.(item.label)}
+              onPress={() => handleTabPress(item)}
               activeOpacity={0.7}
             >
               <ThemedText style={styles.navIcon}>{item.icon}</ThemedText>

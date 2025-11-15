@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React from "react"
 import { ScrollView, StyleSheet, View } from "react-native"
 import { ThemedText } from "@/components/themed-text"
 import { ThemedView } from "@/components/themed-view"
@@ -11,8 +11,6 @@ import { SessionCard } from "@/components/SessionCard"
 import { BottomNavigation } from "@/components/BottomNavigation"
 
 export default function DashboardScreen() {
-  const [activeTab, setActiveTab] = useState("Home")
-
   return (
     <ThemedView style={styles.container}>
       <AppHeader
@@ -136,7 +134,7 @@ export default function DashboardScreen() {
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNavigation />
     </ThemedView>
   )
 }
