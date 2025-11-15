@@ -13,7 +13,7 @@
 // Change this to your computer's IP address if testing on a physical device
 // For Android Emulator, use "10.0.2.2"
 // For iOS Simulator or web, use "localhost"
-const BACKEND_HOST = "localhost"
+const BACKEND_HOST = "172.20.10.3"
 const BACKEND_PORT = "8080"
 
 export const API_CONFIG = {
