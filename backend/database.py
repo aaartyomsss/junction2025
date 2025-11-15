@@ -6,9 +6,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Database URL - reads from environment variable or uses default
+# Note: Using port 5433 to avoid conflict with local PostgreSQL service on 5433
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://user:password@127.0.0.1:5432/mydb"
+    "postgresql://user:password@127.0.0.1:5433/mydb"
 )
 
 # Create engine
