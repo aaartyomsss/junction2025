@@ -10,7 +10,7 @@ import { StatCard } from "@/components/StatCard"
 import { SessionCard } from "@/components/SessionCard"
 import { BottomNavigation } from "@/components/BottomNavigation"
 
-export default function DashboardScreen() {
+export default function HarviaDashboardScreen() {
   const [activeTab, setActiveTab] = useState("Home")
 
   return (
