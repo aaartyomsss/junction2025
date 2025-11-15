@@ -6,11 +6,12 @@
  */
 
 import { DeviceStatus, SensorReading } from "@/types/sauna"
+import { API_CONFIG } from "./config"
 
-// API Configuration - update this to your backend URL
-const BACKEND_BASE_URL = "http://localhost:8080"
-const API_V1_URL = `${BACKEND_BASE_URL}/api/v1`
-const API_URL = `${BACKEND_BASE_URL}/api`
+// API Configuration - imported from config.ts
+const BACKEND_BASE_URL = API_CONFIG.BACKEND_BASE_URL
+const API_V1_URL = API_CONFIG.API_V1_URL
+const API_URL = API_CONFIG.API_URL
 
 // ============================================
 // Type Definitions
@@ -62,6 +63,27 @@ export interface DBUser {
   updated_at?: string
 }
 
+export interface DBSauna {
+  id?: number
+  name: string
+  latitude: number
+  longitude: number
+  rating: number
+  description?: string
+  added_by_user_id: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface SaunaCreateRequest {
+  name: string
+  latitude: number
+  longitude: number
+  rating: number
+  description?: string
+  added_by_user_id: number
+}
+
 // ============================================
 // Main API Service Class
 // ============================================
@@ -80,10 +102,25 @@ class BackendApiService {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/health`)
+      console.log(`🔍 Checking backend health at: ${this.baseUrl}/health`)
+      const response = await fetch(`${this.baseUrl}/health`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+      })
+      console.log(
+        `✓ Backend health check: ${response.ok ? "OK" : "FAILED"} (${
+          response.status
+        })`
+      )
       return response.ok
-    } catch (error) {
-      console.error("Backend health check failed:", error)
+    } catch (error: any) {
+      console.error("❌ Backend health check failed:", error.message)
+      console.error("   Backend URL:", this.baseUrl)
+      console.error(
+        "   Make sure backend is running: cd backend && uv run uvicorn main:app --host 0.0.0.0 --reload"
+      )
       return false
     }
   }
@@ -351,6 +388,64 @@ class BackendApiService {
    */
   async deleteDBUser(userId: number): Promise<void> {
     await this.request(`${this.apiUrl}/users/${userId}`, {
+      method: "DELETE",
+    })
+  }
+
+  // ============================================
+  // SAUNA MANAGEMENT
+  // ============================================
+
+  /**
+   * Get all saunas from database
+   */
+  async getSaunas(
+    skip: number = 0,
+    limit: number = 100,
+    rating?: number
+  ): Promise<DBSauna[]> {
+    let url = `${this.apiUrl}/saunas/?skip=${skip}&limit=${limit}`
+    if (rating) {
+      url += `&rating=${rating}`
+    }
+    console.log(`🌐 Fetching saunas from: ${url}`)
+    return this.request<DBSauna[]>(url)
+  }
+
+  /**
+   * Get sauna by ID
+   */
+  async getSauna(saunaId: number): Promise<DBSauna> {
+    return this.request<DBSauna>(`${this.apiUrl}/saunas/${saunaId}`)
+  }
+
+  /**
+   * Create new sauna
+   */
+  async createSauna(sauna: SaunaCreateRequest): Promise<DBSauna> {
+    return this.request<DBSauna>(`${this.apiUrl}/saunas/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sauna),
+    })
+  }
+
+  /**
+   * Update sauna
+   */
+  async updateSauna(saunaId: number, sauna: DBSauna): Promise<DBSauna> {
+    return this.request<DBSauna>(`${this.apiUrl}/saunas/${saunaId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sauna),
+    })
+  }
+
+  /**
+   * Delete sauna
+   */
+  async deleteSauna(saunaId: number): Promise<void> {
+    await this.request(`${this.apiUrl}/saunas/${saunaId}`, {
       method: "DELETE",
     })
   }
