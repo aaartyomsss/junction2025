@@ -1,32 +1,46 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
 *.so
-*.dylib
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Test binary, built with `go test -c`
-*.test
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
 
-# Output of the go coverage tool
-*.out
+# UV
+.uv/
 
-# Dependency directories
-vendor/
-
-# Go workspace file
-go.work
-
-# Environment variables
-.env
-
-# IDE specific files
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS specific files
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
 .DS_Store
 Thumbs.db

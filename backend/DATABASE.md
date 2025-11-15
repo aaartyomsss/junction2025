@@ -12,7 +12,7 @@ This project uses **SQLModel** as the ORM (Object-Relational Mapper) to interact
 docker-compose up -d
 ```
 
-This starts PostgreSQL on `localhost:5432` with:
+This starts PostgreSQL on `localhost:5433` with:
 
 - Database: `mydb`
 - User: `user`
@@ -24,10 +24,10 @@ Set the `DATABASE_URL` environment variable (optional):
 
 ```bash
 # Windows PowerShell
-$env:DATABASE_URL = "postgresql://user:password@localhost:5432/mydb"
+$env:DATABASE_URL = "postgresql://user:password@localhost:5433/mydb"
 
 # Linux/Mac
-export DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
+export DATABASE_URL="postgresql://user:password@localhost:5433/mydb"
 ```
 
 If not set, it defaults to the connection string in `database.py`.
@@ -35,7 +35,7 @@ If not set, it defaults to the connection string in `database.py`.
 ## Project Structure
 
 ```
-ai-service/
+backend/
 ├── db_models/              # SQLModel database models
 │   ├── __init__.py
 │   ├── user.py            # User model example
