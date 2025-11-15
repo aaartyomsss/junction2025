@@ -21,7 +21,7 @@ docker-compose up -d
 uv run python -m alembic upgrade head
 
 # 4. Run the API on the port expected by saunsei
-uv run python -m uvicorn main:app --reload --port 8080
+uv run python scripts/generate_saunas.py --count 20
 ```
 
 Swagger UI + ReDoc live at `http://localhost:8080/docs` / `http://localhost:8080/redoc`.
