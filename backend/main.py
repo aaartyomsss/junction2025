@@ -5,13 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from models import model_manager
 from routes import (
-    decision_tree_router,
     harvia_router,
     knn_router,
-    random_forest_router,
     sauna_backend_router,
     saunas_router,
-    svm_router,
+    sessions_router,
     users_router,
 )
 from database import create_db_and_tables
@@ -42,11 +40,9 @@ app.include_router(harvia_router, prefix="/api")
 
 # ML/DB routes remain under /api for backwards compatibility
 app.include_router(knn_router, prefix="/api")
-app.include_router(svm_router, prefix="/api")
-app.include_router(decision_tree_router, prefix="/api")
-app.include_router(random_forest_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(saunas_router, prefix="/api")
+app.include_router(sessions_router, prefix="/api")
 
 
 @app.on_event("startup")
@@ -64,7 +60,7 @@ async def root():
     return {
         "message": "Welcome to Junction Backend API",
         "documentation": "/docs",
-        "available_models": ["knn", "svm", "decision_tree", "random_forest"],
+        "available_models": ["knn"],
     }
 
 
@@ -78,10 +74,7 @@ async def health_check():
 async def models_status():
     """Get training status of all models"""
     return {
-        "knn": model_manager.is_trained("knn"),
-        "svm": model_manager.is_trained("svm"),
-        "decision_tree": model_manager.is_trained("decision_tree"),
-        "random_forest": model_manager.is_trained("random_forest")
+        "knn": model_manager.is_trained("knn")
     }
 
 
