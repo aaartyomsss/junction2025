@@ -31,6 +31,7 @@ export default function MapScreen() {
       avgTemp: "85°C",
       isOwned: true,
       sharedWith: 3,
+      coordinates: { latitude: 60.1699, longitude: 24.9384 }, // Helsinki center
       attributes: [
         { icon: "🧘", label: "Recovery", rating: 5 },
         { icon: "🔥", label: "Heat Power", rating: 4 },
@@ -49,6 +50,7 @@ export default function MapScreen() {
       visits: 8,
       avgTemp: "80°C",
       owner: "Mikko Virtanen",
+      coordinates: { latitude: 60.2055, longitude: 24.6559 }, // Espoo center
       attributes: [
         { icon: "🧘", label: "Recovery", rating: 4 },
         { icon: "🔥", label: "Heat Power", rating: 5 },
@@ -67,6 +69,7 @@ export default function MapScreen() {
       visits: 156,
       avgTemp: "90°C",
       lastVisit: "2 days ago",
+      coordinates: { latitude: 60.1641, longitude: 24.9561 }, // Allas Sea Pool actual location
       attributes: [
         { icon: "🧘", label: "Recovery", rating: 5 },
         { icon: "🔥", label: "Heat Power", rating: 5 },
@@ -81,6 +84,7 @@ export default function MapScreen() {
       visits: 89,
       avgTemp: "85°C",
       lastVisit: "1 week ago",
+      coordinates: { latitude: 60.1515, longitude: 24.9249 }, // Löyly actual location
       attributes: [
         { icon: "🧘", label: "Recovery", rating: 4 },
         { icon: "🔥", label: "Heat Power", rating: 4 },
@@ -106,6 +110,11 @@ export default function MapScreen() {
         <MapHeader
           saunaCount={totalSaunas}
           onAddSauna={() => console.log("Add new sauna")}
+          saunas={[
+            ...yourSaunas.map((s) => ({ ...s, type: "owned" as const })),
+            ...sharedSaunas.map((s) => ({ ...s, type: "shared" as const })),
+            ...publicSaunas.map((s) => ({ ...s, type: "public" as const })),
+          ]}
         />
 
         {/* Your Saunas Section */}

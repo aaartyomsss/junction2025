@@ -1,30 +1,64 @@
 import React from "react"
 import { View, StyleSheet, TouchableOpacity } from "react-native"
+import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps"
 import { ThemedText } from "@/components/themed-text"
+
+interface SaunaLocation {
+  name: string
+  coordinates: {
+    latitude: number
+    longitude: number
+  }
+  type: "owned" | "shared" | "public"
+}
 
 interface MapHeaderProps {
   saunaCount: number
   onAddSauna?: () => void
+  saunas?: SaunaLocation[]
 }
 
-export function MapHeader({ saunaCount, onAddSauna }: MapHeaderProps) {
+export function MapHeader({ saunaCount, onAddSauna, saunas = [] }: MapHeaderProps) {
+  const getPinColor = (type: "owned" | "shared" | "public") => {
+    switch (type) {
+      case "owned":
+        return "#C9B59C" // Brown
+      case "shared":
+        return "#2B7FFF" // Blue
+      case "public":
+        return "#FF6900" // Orange
+      default:
+        return "#C9B59C"
+    }
+  }
+
   return (
     <View style={styles.container}>
       {/* Map Visualization */}
       <View style={styles.mapContainer}>
-        {/* Location Pins */}
-        <View style={[styles.pin, styles.pinBrown, { top: 120, left: 60 }]}>
-          <ThemedText style={styles.pinText}>📍</ThemedText>
-        </View>
-        <View style={[styles.pin, styles.pinBlue, { top: 80, left: 160 }]}>
-          <ThemedText style={styles.pinText}>📍</ThemedText>
-        </View>
-        <View style={[styles.pin, styles.pinOrange, { top: 140, left: 220 }]}>
-          <ThemedText style={styles.pinText}>📍</ThemedText>
-        </View>
-        <View style={[styles.pin, styles.pinBrown, { top: 180, left: 100 }]}>
-          <ThemedText style={styles.pinText}>📍</ThemedText>
-        </View>
+        <MapView
+          style={styles.map}
+          initialRegion={{
+            latitude: 60.1699,
+            longitude: 24.9384,
+            latitudeDelta: 0.15,
+            longitudeDelta: 0.15,
+          }}
+          provider={PROVIDER_DEFAULT}
+        >
+          {/* Render sauna markers */}
+          {saunas.map((sauna, index) => (
+            <Marker
+              key={`${sauna.name}-${index}`}
+              coordinate={{
+                latitude: sauna.coordinates.latitude,
+                longitude: sauna.coordinates.longitude,
+              }}
+              pinColor={getPinColor(sauna.type)}
+              title={sauna.name}
+            />
+          ))}
+        </MapView>
 
         {/* Add Sauna Button */}
         <TouchableOpacity
@@ -59,34 +93,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     position: "relative",
     overflow: "hidden",
-    // Subtle gradient effect with border
     borderWidth: 1,
     borderColor: "#D9CFC7",
   },
-  pin: {
-    position: "absolute",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  pinBrown: {
-    backgroundColor: "#C9B59C",
-  },
-  pinBlue: {
-    backgroundColor: "#2B7FFF",
-  },
-  pinOrange: {
-    backgroundColor: "#FF6900",
-  },
-  pinText: {
-    fontSize: 16,
+  map: {
+    flex: 1,
   },
   addSaunaButton: {
     position: "absolute",
