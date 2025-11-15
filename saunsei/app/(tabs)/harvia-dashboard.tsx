@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import { ScrollView, StyleSheet, View } from "react-native"
 import { ThemedText } from "@/components/themed-text"
 import { ThemedView } from "@/components/themed-view"
@@ -10,7 +10,9 @@ import { StatCard } from "@/components/StatCard"
 import { SessionCard } from "@/components/SessionCard"
 import { BottomNavigation } from "@/components/BottomNavigation"
 
-export default function DashboardScreen() {
+export default function HarviaDashboardScreen() {
+  const [activeTab, setActiveTab] = useState("Home")
+
   return (
     <ThemedView style={styles.container}>
       <AppHeader
@@ -134,7 +136,7 @@ export default function DashboardScreen() {
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      <BottomNavigation />
+      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </ThemedView>
   )
 }
