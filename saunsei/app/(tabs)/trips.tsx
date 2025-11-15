@@ -158,6 +158,7 @@ export default function MapScreen() {
                 <SaunaCard
                   key={index}
                   {...sauna}
+                  imageIndex={index}
                   onPress={() => console.log("Open sauna:", sauna.name)}
                 />
               ))}
@@ -178,6 +179,7 @@ export default function MapScreen() {
                 <SaunaCard
                   key={index}
                   {...sauna}
+                  imageIndex={yourSaunas.length + index}
                   onPress={() => console.log("Open sauna:", sauna.name)}
                 />
               ))}
@@ -198,6 +200,7 @@ export default function MapScreen() {
                 <SaunaCard
                   key={index}
                   {...sauna}
+                  imageIndex={yourSaunas.length + sharedSaunas.length + index}
                   onPress={() => console.log("Open sauna:", sauna.name)}
                 />
               ))}

@@ -29,7 +29,6 @@ export default function DashboardScreen() {
           <ProfileCard
             name="Seppo Seppälä"
             sessionCount={127}
-            avatarUrl="https://via.placeholder.com/80"
           />
         </View>
 
@@ -113,6 +112,7 @@ export default function DashboardScreen() {
               duration="45 min"
               avgTemp="85°C"
               maxTemp="90°C"
+              imageIndex={0}
             />
             <SessionCard
               locationName="Downtown Fitness"
@@ -120,6 +120,7 @@ export default function DashboardScreen() {
               duration="30 min"
               avgTemp="80°C"
               maxTemp="85°C"
+              imageIndex={1}
             />
             <SessionCard
               locationName="Zen Sauna Lounge"
@@ -127,6 +128,7 @@ export default function DashboardScreen() {
               duration="60 min"
               avgTemp="83°C"
               maxTemp="88°C"
+              imageIndex={2}
             />
           </View>
         </View>

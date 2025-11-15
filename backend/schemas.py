@@ -129,7 +129,7 @@ class DeviceReading(BaseModel):
 
 class Device(BaseModel):
     """Device information"""
-    name: str  # Harvia API uses 'name' as the device ID
+    name: Optional[str] = None  # Harvia API uses 'name' as the device ID (optional, can use id instead)
     type: Optional[str] = None
     attr: Optional[List[Dict[str, str]]] = None  # Harvia uses attr array for properties
     
@@ -142,6 +142,15 @@ class Device(BaseModel):
     lastSeen: Optional[str] = None
     location: Optional[DeviceLocation] = None
     currentReading: Optional[DeviceReading] = None
+    
+    # Additional metadata fields
+    brand: Optional[str] = None
+    serialNumber: Optional[str] = None
+    organization: Optional[str] = None
+    country: Optional[str] = None
+    city: Optional[str] = None
+    espChip: Optional[str] = None
+    firmwareVersion: Optional[str] = None
     
     class Config:
         # Allow extra fields that might come from API
