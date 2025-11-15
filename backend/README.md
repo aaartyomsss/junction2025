@@ -3,6 +3,7 @@
 Unified FastAPI backend that now powers every API surface in this repo:
 
 - `/api/v1/...` mock sauna devices + user CRUD (ported from the Go service)
+- `/api/harvia/...` **Harvia Cloud API integration** for real device authentication and control
 - `/api/models/...` machine-learning endpoints (KNN, SVM, Decision Tree, Random Forest)
 - PostgreSQL/SQLModel stack with Alembic migrations
 
@@ -44,13 +45,37 @@ backend/
 └── test_main.py         # Integration-style tests
 ```
 
+## Harvia Cloud API Integration
+
+The backend now includes full integration with the Harvia Cloud API for real device authentication and control. See [HARVIA_API_GUIDE.md](HARVIA_API_GUIDE.md) for detailed usage instructions.
+
+### Key Features
+- **Authentication**: Login with user credentials (not stored on backend)
+- **Device Management**: Fetch real devices from user's Harvia account
+- **Device Control**: Send commands and set target temperatures
+- **Telemetry**: Get real-time device state and sensor data
+- **Token Management**: Automatic token refresh support
+
+### Quick Example
+
+```python
+# 1. Authenticate
+POST /api/harvia/auth/login
+{ "username": "user@example.com", "password": "password" }
+
+# 2. Get devices (with Authorization: Bearer <token>)
+GET /api/harvia/devices
+
+# 3. Set device target
+PATCH /api/harvia/devices/target
+{ "deviceId": "device-123", "temperature": 85.0 }
+```
+
+See the [complete guide](HARVIA_API_GUIDE.md) for more examples and best practices.
+
 ## Unified Sauna Backend (migrated from Go)
 
 The legacy Go service has been fully re-implemented inside FastAPI. All responses still match the JSON envelope (`success`, `data`, `error`) that `saunsei/services/backendApi.ts` expects.
-
-## Unified Sauna Backend (migrated from Go)
-
-The legacy Go service under `/backend` has been fully re-implemented inside the FastAPI app. You can now serve the Expo client and the ML endpoints from a single Python process.
 
 ### Available endpoints
 
