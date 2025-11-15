@@ -24,6 +24,13 @@ export default function SocialScreen() {
   const [users, setUsers] = useState<Map<number, DBUser>>(new Map())
   const [saunas, setSaunas] = useState<Map<number, DBSauna>>(new Map())
   const [loading, setLoading] = useState(true)
+  const [recommendation, setRecommendation] = useState<{
+    recommended_duration_minutes: number
+    recommended_temperature: number
+    confidence: number
+    based_on_sessions: number
+    insights: string[]
+  } | null>(null)
 
   useEffect(() => {
     loadData()
@@ -33,12 +40,14 @@ export default function SocialScreen() {
     try {
       setLoading(true)
 
-      // Fetch sessions, users, and saunas in parallel
-      const [sessionsData, usersData, saunasData] = await Promise.all([
-        backendApi.getSessions(0, 20),
-        backendApi.getDBUsers(0, 100),
-        backendApi.getSaunas(0, 100),
-      ])
+      // Fetch sessions, users, saunas, and recommendation in parallel
+      const [sessionsData, usersData, saunasData, recommendationData] =
+        await Promise.all([
+          backendApi.getSessions(0, 20),
+          backendApi.getDBUsers(0, 100),
+          backendApi.getSaunas(0, 100),
+          backendApi.getSessionRecommendation(),
+        ])
 
       // Create lookup maps
       const usersMap = new Map(usersData.map((u) => [u.id!, u]))
@@ -47,6 +56,7 @@ export default function SocialScreen() {
       setSessions(sessionsData)
       setUsers(usersMap)
       setSaunas(saunasMap)
+      setRecommendation(recommendationData)
     } catch (error) {
       console.error("Failed to load feed data:", error)
     } finally {
@@ -101,6 +111,49 @@ export default function SocialScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </View>
+
+        {/* AI Recommendation Card */}
+        {recommendation && recommendation.based_on_sessions > 0 && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>
+              🤖 Your Personalized Recommendation
+            </ThemedText>
+            <View style={styles.recommendationCard}>
+              <View style={styles.recommendationHeader}>
+                <ThemedText style={styles.recommendationTitle}>
+                  Optimal Session for You
+                </ThemedText>
+                <ThemedText style={styles.confidenceText}>
+                  {Math.round(recommendation.confidence * 100)}% confidence
+                </ThemedText>
+              </View>
+
+              <View style={styles.recommendationStats}>
+                <View style={styles.recommendationStat}>
+                  <ThemedText style={styles.statValue}>
+                    {recommendation.recommended_duration_minutes} min
+                  </ThemedText>
+                  <ThemedText style={styles.statLabel}>Duration</ThemedText>
+                </View>
+                <View style={styles.recommendationDivider} />
+                <View style={styles.recommendationStat}>
+                  <ThemedText style={styles.statValue}>
+                    {recommendation.recommended_temperature}°C
+                  </ThemedText>
+                  <ThemedText style={styles.statLabel}>Temperature</ThemedText>
+                </View>
+              </View>
+
+              <View style={styles.insightsContainer}>
+                {recommendation.insights.slice(0, 2).map((insight, index) => (
+                  <ThemedText key={index} style={styles.insightText}>
+                    • {insight}
+                  </ThemedText>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Upcoming Sessions Section */}
         <View style={styles.section}>
@@ -247,5 +300,65 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: "#8A7F72",
+  },
+  recommendationCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#D9CFC7",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  recommendationHeader: {
+    marginBottom: 16,
+  },
+  recommendationTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#3A2F23",
+    marginBottom: 4,
+  },
+  confidenceText: {
+    fontSize: 12,
+    color: "#8A7F72",
+  },
+  recommendationStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingVertical: 16,
+    marginBottom: 16,
+    backgroundColor: "#F9F8F6",
+    borderRadius: 8,
+  },
+  recommendationStat: {
+    alignItems: "center",
+  },
+  recommendationDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: "#D9CFC7",
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#C9B59C",
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "#8A7F72",
+  },
+  insightsContainer: {
+    gap: 8,
+  },
+  insightText: {
+    fontSize: 14,
+    color: "#5A4F43",
+    lineHeight: 20,
   },
 })

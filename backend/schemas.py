@@ -56,6 +56,31 @@ class TrainResponse(BaseModel):
     samples_trained: int
 
 
+class SaunaRecommendationResponse(BaseModel):
+    """Response model for sauna session recommendations"""
+    recommended_duration_minutes: int = Field(..., description="Recommended session duration in minutes")
+    recommended_temperature: float = Field(..., description="Recommended temperature in Celsius")
+    confidence: float = Field(..., description="Confidence score (0.0 to 1.0)")
+    based_on_sessions: int = Field(..., description="Number of historical sessions used")
+    insights: List[str] = Field(default_factory=list, description="Insights about user preferences")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "recommended_duration_minutes": 45,
+                "recommended_temperature": 82.5,
+                "confidence": 0.85,
+                "based_on_sessions": 12,
+                "insights": [
+                    "Based on 12 previous sessions",
+                    "You prefer moderate session lengths",
+                    "You enjoy traditional Finnish sauna temperatures"
+                ]
+            }
+        }
+    )
+
+
 # ============================================================================
 # Harvia API Schemas
 # ============================================================================

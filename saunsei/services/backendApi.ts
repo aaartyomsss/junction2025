@@ -260,7 +260,8 @@ class BackendApiService {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(
-          errorData.error || `Failed to fetch Harvia devices: ${response.status}`
+          errorData.error ||
+            `Failed to fetch Harvia devices: ${response.status}`
         )
       }
 
@@ -659,6 +660,28 @@ class BackendApiService {
     await this.request(`${this.apiUrl}/sessions/${sessionId}`, {
       method: "DELETE",
     })
+  }
+
+  // ============================================
+  // ML RECOMMENDATIONS
+  // ============================================
+
+  /**
+   * Get personalized sauna session recommendations based on historical data
+   */
+  async getSessionRecommendation(): Promise<{
+    recommended_duration_minutes: number
+    recommended_temperature: number
+    confidence: number
+    based_on_sessions: number
+    insights: string[]
+  } | null> {
+    try {
+      return await this.request(`${this.apiUrl}/models/knn/recommend-session`)
+    } catch (error) {
+      console.error("Failed to get session recommendation:", error)
+      return null
+    }
   }
 
   // ============================================
