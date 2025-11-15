@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { icon: "📍", label: "Map", route: "/(tabs)/trips" as const },
   { icon: "📱", label: "Feed", route: "/(tabs)/social" as const },
   { icon: "🏆", label: "Rankings", route: "/(tabs)/devices" as const },
-  { icon: "❤️", label: "Health", route: "/(tabs)/devices" as const },
+  { icon: "❤️", label: "Health", route: "/(tabs)/health" as const },
 ]
 
 export function BottomNavigation({
