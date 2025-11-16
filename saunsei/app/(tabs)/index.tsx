@@ -66,10 +66,7 @@ export default function DashboardScreen() {
       >
         {/* Profile Card */}
         <View style={styles.section}>
-          <ProfileCard
-            name="Seppo Seppälä"
-            sessionCount={127}
-          />
+          <ProfileCard name="Seppo Seppälä" sessionCount={127} />
         </View>
 
         {/* Start Session Button */}

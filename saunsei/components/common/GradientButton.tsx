@@ -42,7 +42,8 @@ export function GradientButton({
     }).start()
   }
 
-  const containerStyle = variant === "active" ? styles.containerActive : styles.container
+  const containerStyle =
+    variant === "active" ? styles.containerActive : styles.container
 
   return (
     <TouchableOpacity

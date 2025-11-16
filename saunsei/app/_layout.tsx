@@ -24,6 +24,14 @@ export default function RootLayout() {
           name="modal"
           options={{ presentation: "modal", title: "Modal" }}
         />
+        <Stack.Screen
+          name="wrapped"
+          options={{ 
+            presentation: "modal",
+            headerShown: false,
+            animation: "slide_from_bottom"
+          }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
