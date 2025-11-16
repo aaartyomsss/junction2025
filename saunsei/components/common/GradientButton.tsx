@@ -14,6 +14,7 @@ interface GradientButtonProps {
   icon?: string
   onPress?: () => void
   style?: StyleProp<ViewStyle>
+  variant?: "primary" | "active"
 }
 
 export function GradientButton({
@@ -21,6 +22,7 @@ export function GradientButton({
   icon,
   onPress,
   style,
+  variant = "primary",
 }: GradientButtonProps) {
   const [scaleValue] = useState(new Animated.Value(1))
 
@@ -40,6 +42,8 @@ export function GradientButton({
     }).start()
   }
 
+  const containerStyle = variant === "active" ? styles.containerActive : styles.container
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -48,7 +52,7 @@ export function GradientButton({
       activeOpacity={1}
     >
       <Animated.View
-        style={[styles.container, style, { transform: [{ scale: scaleValue }] }]}
+        style={[containerStyle, style, { transform: [{ scale: scaleValue }] }]}
       >
         <View style={styles.content}>
           {icon && <ThemedText style={styles.icon}>{icon}</ThemedText>}
@@ -68,6 +72,17 @@ const styles = StyleSheet.create({
     shadowColor: "#C9B59C",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  containerActive: {
+    backgroundColor: "#E74C3C",
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    shadowColor: "#E74C3C",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 5,
   },

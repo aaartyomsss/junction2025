@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState, useEffect } from "react"
 import { ScrollView, StyleSheet, View } from "react-native"
 import { ThemedText } from "@/components/themed-text"
 import { ThemedView } from "@/components/themed-view"
@@ -9,8 +9,48 @@ import { SaunaTamagotchi } from "@/components/common/SaunaTamagotchi"
 import { StatCard } from "@/components/common/StatCard"
 import { SessionCard } from "@/components/common/SessionCard"
 import { BottomNavigation } from "@/components/common/BottomNavigation"
+import { router } from "expo-router"
 
 export default function DashboardScreen() {
+  const [isSessionActive, setIsSessionActive] = useState(false)
+  const [sessionSeconds, setSessionSeconds] = useState(0)
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null
+
+    if (isSessionActive) {
+      interval = setInterval(() => {
+        setSessionSeconds((prev) => prev + 1)
+      }, 1000)
+    } else if (interval) {
+      clearInterval(interval)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isSessionActive])
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
+
+  const handleSessionToggle = () => {
+    if (isSessionActive) {
+      // Stop session
+      setIsSessionActive(false)
+      console.log(`Session ended: ${sessionSeconds} seconds`)
+      // TODO: Save session to backend
+      setSessionSeconds(0)
+    } else {
+      // Start session
+      setIsSessionActive(true)
+      setSessionSeconds(0)
+    }
+  }
+
   return (
     <ThemedView style={styles.container}>
       <AppHeader
@@ -32,12 +72,26 @@ export default function DashboardScreen() {
           />
         </View>
 
+        {/* Start Session Button */}
+        <View style={styles.section}>
+          <GradientButton
+            title={
+              isSessionActive
+                ? `Stop Session - ${formatTime(sessionSeconds)}`
+                : "Start Sauna Session"
+            }
+            icon={isSessionActive ? "⏹️" : "▶️"}
+            onPress={handleSessionToggle}
+            variant={isSessionActive ? "active" : "primary"}
+          />
+        </View>
+
         {/* Sauna Wrapped Button */}
         <View style={styles.section}>
           <GradientButton
             title="View Your 2025 Sauna Wrapped"
             icon="✨"
-            onPress={() => console.log("Sauna Wrapped")}
+            onPress={() => router.push("/wrapped")}
           />
         </View>
 
